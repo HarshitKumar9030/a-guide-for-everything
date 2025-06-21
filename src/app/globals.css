@@ -89,6 +89,23 @@ body {
   }
 }
 
+@keyframes shimmerGlow {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.8;
+  }
+  75% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(200%);
+    opacity: 0;
+  }
+}
+
 @keyframes slideInRight {
   0% {
     transform: translateX(-100%);
@@ -188,5 +205,9 @@ button:active {
 }
 
 .animate-shimmer {
-  animation: shimmer 1.5s ease-in-out;
+  animation: shimmerGlow 1.5s ease-in-out;
+}
+
+.shimmer-dark {
+  animation: shimmerGlow 1.5s ease-in-out;
 }

@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@next-auth/mongodb-adapter':
+        specifier: ^1.1.3
+        version: 1.1.3(mongodb@6.17.0)(next-auth@4.24.11(next@15.3.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
+      bcryptjs:
+        specifier: ^3.0.2
+        version: 3.0.2
       framer-motion:
         specifier: ^12.18.1
         version: 12.18.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -39,6 +45,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.10
+      '@types/bcryptjs':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@types/node':
         specifier: ^20
         version: 20.19.1
@@ -290,6 +299,12 @@ packages:
   '@napi-rs/wasm-runtime@0.2.11':
     resolution: {integrity: sha512-9DPkXtvHydrcOsopiYpUgPHpmj0HWZKMUnL2dZqpvC42lsratuBG06V5ipyno0fUek5VlFsNQ+AcFATSrJXgMA==}
 
+  '@next-auth/mongodb-adapter@1.1.3':
+    resolution: {integrity: sha512-nH/may8hntYBlcuxepSsR2b95w6SRnP+c/FFt3KKjdTScNjhrN0zZdlT90nisjG/3gK+MvzMbz/F4Rwpgr9RMA==}
+    peerDependencies:
+      mongodb: ^5 || ^4
+      next-auth: ^4
+
   '@next/env@15.3.4':
     resolution: {integrity: sha512-ZkdYzBseS6UjYzz6ylVKPOK+//zLWvD6Ta+vpoye8cW11AjiQjGYVibF0xuvT4L0iJfAPfZLFidaEzAOywyOAQ==}
 
@@ -465,6 +480,10 @@ packages:
 
   '@tybys/wasm-util@0.9.0':
     resolution: {integrity: sha512-6+7nlbMVX/PVDCwaIQ8nTOPveOcFLSt8GcXdx8hD0bt39uWxYT88uXzqTd4fTvqta7oeUJqudepapKNt2DYJFw==}
+
+  '@types/bcryptjs@3.0.0':
+    resolution: {integrity: sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg==}
+    deprecated: This is a stub types definition. bcryptjs provides its own type definitions, so you do not need this installed.
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -723,6 +742,10 @@ packages:
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+
+  bcryptjs@3.0.2:
+    resolution: {integrity: sha512-k38b3XOZKv60C4E2hVsXTolJWfkGRMbILBIe2IBITXciy5bOsTKot5kDrf3ZfufQtQOUN5mXceUEpU1rTl9Uog==}
+    hasBin: true
 
   brace-expansion@1.1.12:
     resolution: {integrity: sha512-9T9UjW3r0UW5c1Q7GTwllptXwhvYmEzFhzMfZ9H7FQWt+uZePjZPjBP/W1ZEyZ1twGWom5/56TF4lPcqjnDHcg==}
@@ -2196,6 +2219,11 @@ snapshots:
       '@tybys/wasm-util': 0.9.0
     optional: true
 
+  '@next-auth/mongodb-adapter@1.1.3(mongodb@6.17.0)(next-auth@4.24.11(next@15.3.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0))':
+    dependencies:
+      mongodb: 6.17.0
+      next-auth: 4.24.11(next@15.3.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+
   '@next/env@15.3.4': {}
 
   '@next/eslint-plugin-next@15.3.4':
@@ -2328,6 +2356,10 @@ snapshots:
     dependencies:
       tslib: 2.8.1
     optional: true
+
+  '@types/bcryptjs@3.0.0':
+    dependencies:
+      bcryptjs: 3.0.2
 
   '@types/estree@1.0.8': {}
 
@@ -2605,6 +2637,8 @@ snapshots:
   axobject-query@4.1.0: {}
 
   balanced-match@1.0.2: {}
+
+  bcryptjs@3.0.2: {}
 
   brace-expansion@1.1.12:
     dependencies:

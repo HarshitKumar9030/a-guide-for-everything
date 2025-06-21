@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter , Just_Another_Hand} from "next/font/google";
 import "./globals.css";
+import Providers from "@/components/providers/Providers";
+import NavBar from "@/components/core/NavBar";
 
 const justAnotherHand = Just_Another_Hand({
   variable: "--font-just-another-hand",
@@ -30,7 +32,10 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${justAnotherHand.variable} ${inter.className} antialiased`}
       >
-        {children}
+        <Providers>
+          <NavBar />
+          {children}
+        </Providers>
       </body>
     </html>
   );
