@@ -6,8 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
 import { User, LogOut, BookMarked, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function NavBar() {
+    const router = useRouter();
     const [showNavbar, setShowNavbar] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -86,6 +88,7 @@ export default function NavBar() {
                             <div className="px-6 py-6">
                                 <div className="flex justify-between items-center mb-6">
                                     <Image
+                                        onClick={()=> router.replace('/')}
                                         src="/logo-transparent.svg"
                                         alt="AGFE Logo"
                                         width={100}
@@ -210,6 +213,7 @@ export default function NavBar() {
                             <div>
                                 <Image
                                     src="/logo-transparent.svg"
+                                    onClick={() => router.replace('/')}
                                     alt="AGFE Logo"
                                     width={84}
                                     height={28}

@@ -4,30 +4,26 @@ import { connectToDatabase } from "@/lib/mongodb";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json();
-
-    if (!name || !email || !password) {
+    const { name, email, password } = await req.json();    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { message: "Missing required fields" },
         { status: 400 }
       );
     }
 
     if (password.length < 6) {
       return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
+        { message: "Password must be at least 6 characters" },
         { status: 400 }
       );
     }
 
-    const { db } = await connectToDatabase();
-
-    // Check if user already exists
+    const { db } = await connectToDatabase();    // Check if user already exists
     const existingUser = await db.collection("users").findOne({ email });
     if (existingUser) {
       return NextResponse.json(
-        { error: "User already exists" },
-        { status: 400 }
+        { message: "User already exists" },
+        { status: 409 }
       );
     }
 
