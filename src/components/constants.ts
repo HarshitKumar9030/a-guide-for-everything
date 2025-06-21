@@ -1,0 +1,1 @@
+export const github_url = "https://github.com/harshitkumar9030/a-guide-for-everything"

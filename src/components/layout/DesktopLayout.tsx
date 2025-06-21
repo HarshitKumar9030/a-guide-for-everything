@@ -5,6 +5,7 @@ import { DefaultTypewriterText } from '../animation/text';
 import Shimmer, { useShimmer } from '../animation/shimmer';
 import { Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import Stars from '../core/Stars';
+import ComingSoonModal from '../core/ComingSoonModal';
 
 // Export the model type and available models
 export type ModelType = 'gemini-flash-2.5' | 'llama-3.2-hackclub';
@@ -44,6 +45,7 @@ export default function DesktopLayout() {
     const [inputValue, setInputValue] = useState('');
     const [isInputMode, setIsInputMode] = useState(false);
     const [showHoverBubble, setShowHoverBubble] = useState(false);
+    const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
     const shimmerActive = useShimmer(selectedModel);
 
     const handleModelChange = (model: ModelType) => {
@@ -94,23 +96,23 @@ export default function DesktopLayout() {
                     circleSize={24}
                     rotate={30}
                 />
-            </div>
-              <div className='absolute top-8 left-12'>
+            </div>            
+            <div className='absolute top-8 left-12'>
                 <Stars />
-            </div>
+            </div>          
 
             <div className="flex flex-col items-center justify-center">
                 <div className="font-just-another-hand text-[96px]">A Guide For Everything</div>
                 <div className="text-xl text-secondary w-1/2 text-center">Smart guides powered by AI to help families coordinate schedules, manage shift work routines, plan meals, optimize sleep patterns, and maintain work-life balance across different shift rotations.</div>                <div className="mt-3 w-1/2 bg-primary h-48 rounded-2xl relative">
                     <div className="flex h-full w-full flex-col justify-between">
-                        <div 
+                        <div
                             className="flex-1 p-4 relative cursor-text"
                             onClick={() => setIsInputMode(true)}
                             onMouseEnter={() => setShowHoverBubble(true)}
                             onMouseLeave={() => setShowHoverBubble(false)}
                         >
                             {!isInputMode && inputValue === '' ? (
-                                <div className="text-black text-[18px] font-medium">
+                                <div className="text-background text-[18px] font-medium">
                                     <DefaultTypewriterText />
                                 </div>
                             ) : (
@@ -128,7 +130,7 @@ export default function DesktopLayout() {
                                     autoFocus={isInputMode}
                                 />
                             )}
-                            
+
                             {showHoverBubble && !isInputMode && inputValue === '' && (
                                 <div className="absolute -right-4 top-1/2 transform translate-x-full -translate-y-1/2 z-20">
                                     <div className="bg-white text-background px-3 py-2 rounded-lg shadow-lg border text-sm font-medium whitespace-nowrap">
@@ -138,10 +140,12 @@ export default function DesktopLayout() {
                                 </div>
                             )}
                         </div>
-                        <div className="flex justify-between p-4">
-                            <div className="box p-2 bg-white text-background rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                        <div className="flex justify-between p-4">                            <div 
+                                className="box p-2 bg-white text-background rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
+                                onClick={() => setIsComingSoonModalOpen(true)}
+                            >
                                 <Plus />
-                            </div>                            <div className="rightSection flex gap-2">
+                            </div><div className="rightSection flex gap-2">
                                 <div className="relative model-dropdown">
                                     <Shimmer isActive={shimmerActive}>
                                         <div
@@ -167,14 +171,20 @@ export default function DesktopLayout() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="box p-2 bg-white text-background rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
-                                    <ArrowUp />
+                                <div className="box p-2 bg-white text-background rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">                                    <ArrowUp />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            {/* Coming Soon Modal */}
+            <ComingSoonModal 
+                isOpen={isComingSoonModalOpen}
+                onClose={() => setIsComingSoonModalOpen(false)}
+                feature="Images"
+            />
         </div>
     );
 }
