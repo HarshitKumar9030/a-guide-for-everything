@@ -1,26 +1,121 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #1BE1FF;
+  --color-secondary: #A2A2A2;
+  --color-background: #1E1E1E;
+  --color-foreground: #ffffff;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #1E1E1E;
+  --foreground: #ffffff;
+  --primary: #1BE1FF;
+  --secondary: #A2A2A2;
+  --glow-color: rgba(27, 225, 255, 0.7);
+  --glow-strong: rgba(27, 225, 255, 0.9);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #1e1e1e;
+  --foreground: #ffffff;
+  --primary: #1be1ff;
+  --secondary: #a2a2a2;
+  --glow-color: rgba(27, 225, 255, 0.7);
+  --glow-strong: rgba(27, 225, 255, 0.9);
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(to bottom, #141414, var(--background));
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter, sans-serif);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+@keyframes floatAnimation {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulseGlow {
+  0% {
+    filter: drop-shadow(0 0 8px var(--glow-color));
+  }
+  50% {
+    filter: drop-shadow(0 0 15px var(--glow-strong));
+  }
+  100% {
+    filter: drop-shadow(0 0 8px var(--glow-color));
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.font-just-another-hand {
+  font-family: var(--font-just-another-hand, cursive);
+}
+
+.input-box {
+  background-color: var(--primary);
+  border-radius: 20px;
+  box-shadow: 0 0 20px var(--glow-color), 0 0 40px rgba(27, 225, 255, 0.3);
+  animation: fadeInUp 1s ease-out 0.3s backwards;
+}
+
+main {
+  animation: fadeInUp 1s ease-out;
+}
+
+button {
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.05);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.mobile-layout .app-title {
+  font-size: 3rem;
+  line-height: 1.1;
+}
+
+.mobile-layout .input-box {
+  border-radius: 15px;
+  box-shadow: 0 0 15px var(--glow-color), 0 0 30px rgba(27, 225, 255, 0.2);
+}
+
+.desktop-layout .app-title {
+  font-size: 6rem;
+  line-height: 1.1;
+}
+
+.desktop-layout .input-box {
+  border-radius: 20px;
+  box-shadow: 0 0 25px var(--glow-color), 0 0 50px rgba(27, 225, 255, 0.3);
+}
+
+.mobile-layout,
+.desktop-layout {
+  transition: all 0.3s ease-in-out;
 }
