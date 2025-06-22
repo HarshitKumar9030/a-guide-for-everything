@@ -6,7 +6,7 @@ import { Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import Stars from '../core/Stars';
 import ComingSoonModal from '../core/ComingSoonModal';
 import PleaseLogin from '../core/PleaseLogin';
-import Footer from '../core/Footer';
+// import Footer from '../core/Footer';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useGuide } from '@/contexts/GuideContext';

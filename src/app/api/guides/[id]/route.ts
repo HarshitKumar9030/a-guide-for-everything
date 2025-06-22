@@ -4,12 +4,12 @@ import { authOptions } from '@/lib/auth';
 import { getGuidesCollection } from '@/lib/guides-db';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const guides = await getGuidesCollection();
     
     const guide = await guides.findOne({ id });
@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { isPublic, title } = await req.json();
     
     const guides = await getGuidesCollection();
@@ -128,7 +128,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const guides = await getGuidesCollection();
     
     const guide = await guides.findOne({ id });

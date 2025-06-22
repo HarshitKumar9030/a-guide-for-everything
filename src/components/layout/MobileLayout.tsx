@@ -4,7 +4,7 @@ import { Plus, ArrowUp, ChevronDown } from 'lucide-react';
 import CoolSquare from '../core/CoolSquare';
 import ComingSoonModal from '../core/ComingSoonModal';
 import PleaseLogin from '../core/PleaseLogin';
-import Footer from '../core/Footer';
+// import Footer from '../core/Footer';
 import { DefaultTypewriterText } from '../animation/text';
 import { ModelType, availableModels, updateSelectedModel } from './DesktopLayout';
 import Shimmer, { useShimmer } from '../animation/shimmer';
