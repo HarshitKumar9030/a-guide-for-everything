@@ -28,7 +28,7 @@ const comic = Comic_Neue({
 
 export const metadata: Metadata = {
   title: {
-    default: "AGFE - A Guide for Everything",
+    default: "Agfe",
     template: "%s | AGFE"
   },
   description: "Get comprehensive, AI-powered guides for any topic. AGFE creates detailed, personalized guides using advanced AI models to help you learn and understand anything.",
