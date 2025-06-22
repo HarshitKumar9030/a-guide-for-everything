@@ -6,13 +6,15 @@ import Shimmer, { useShimmer } from '../animation/shimmer';
 import { Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import Stars from '../core/Stars';
 import ComingSoonModal from '../core/ComingSoonModal';
+import PleaseLogin from '../core/PleaseLogin';
+import { useSession } from 'next-auth/react';
 
 // Export the model type and available models
-export type ModelType = 'gemini-flash-2.5' | 'llama-3.2-hackclub';
+export type ModelType = 'gemini-flash-2.5' | 'llama-4-hackclub';
 
 export const availableModels = [
     { id: 'gemini-flash-2.5' as ModelType, name: 'Gemini Flash 2.5', provider: 'Google' },
-    { id: 'llama-3.2-hackclub' as ModelType, name: 'Llama 3.2', provider: 'HackClub' }
+    { id: 'llama-4-hackclub' as ModelType, name: 'Llama 4', provider: 'HackClub' }
 ];
 
 let selectedModelGlobal: ModelType = 'gemini-flash-2.5';
@@ -40,12 +42,15 @@ export const updateSelectedModel = (model: ModelType) => {
 };
 
 export default function DesktopLayout() {
+    const { data: session } = useSession();
     const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-flash-2.5');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isInputMode, setIsInputMode] = useState(false);
     const [showHoverBubble, setShowHoverBubble] = useState(false);
-    const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false); const [shimmerTrigger, setShimmerTrigger] = useState(0);
+    const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
+    const [isPleaseLoginModalOpen, setIsPleaseLoginModalOpen] = useState(false);
+    const [shimmerTrigger, setShimmerTrigger] = useState(0);
     const shimmerActive = useShimmer(shimmerTrigger);
 
     // Debug shimmer state
@@ -62,9 +67,15 @@ export default function DesktopLayout() {
             const newTrigger = Date.now(); // Using timestamp to ensure it's always different
             console.log('Force triggering shimmer with timestamp:', newTrigger);
             setShimmerTrigger(newTrigger);
-        }, 150);
+        }, 150);        console.log('Model changed, shimmer will trigger in 150ms:', model);
+    };
 
-        console.log('Model changed, shimmer will trigger in 150ms:', model);
+    const handleInputClick = () => {
+        if (!session) {
+            setIsPleaseLoginModalOpen(true);
+            return;
+        }
+        setIsInputMode(true);
     };
 
     const currentModel = availableModels.find(m => m.id === selectedModel);
@@ -88,7 +99,7 @@ export default function DesktopLayout() {
     }, [isDropdownOpen]);
 
     return (
-        <div className="h-screen  w-screen flex items-center justify-center">
+        <div className="h-screen  bg-[#272727] w-screen flex items-center justify-center">
 
             <div className='absolute top-14 right-14'>
                 <CoolSquare
@@ -121,7 +132,7 @@ export default function DesktopLayout() {
                     <div className="flex h-full w-full flex-col justify-between">
                         <div
                             className="flex-1 p-4 relative cursor-text"
-                            onClick={() => setIsInputMode(true)}
+                            onClick={handleInputClick}
                             onMouseEnter={() => setShowHoverBubble(true)}
                             onMouseLeave={() => setShowHoverBubble(false)}
                         >                            {!isInputMode && inputValue === '' ? (
@@ -191,12 +202,15 @@ export default function DesktopLayout() {
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <ComingSoonModal
+            </div>            <ComingSoonModal
                 isOpen={isComingSoonModalOpen}
                 onClose={() => setIsComingSoonModalOpen(false)}
                 feature="Images"
+            />
+
+            <PleaseLogin
+                isOpen={isPleaseLoginModalOpen}
+                onClose={() => setIsPleaseLoginModalOpen(false)}
             />
         </div>
     );

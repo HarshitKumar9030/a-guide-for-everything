@@ -145,8 +145,20 @@ export default function SignUp() {
               </Link>
             </p>
           </div>
+          
+          <div className="block md:hidden w-full text-center my-8">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-dashed border-[#323232]"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-[#1E1E1E] px-6 text-white text-[32px] font-just-another-hand">
+                  OR
+                </span>
+              </div>
+            </div>
+          </div>
 
-          {/* Right Side - OAuth Providers */}
           <div className="relative flex flex-col items-center">
             <div className="hidden md:block absolute left-0 top-0 bottom-0 w-[1px] border-l border-dashed border-[#323232]"></div>
 
@@ -161,10 +173,8 @@ export default function SignUp() {
 
               <div className="w-[289px] bg-[#272727] rounded-[60px] p-6">
                 <div className="grid grid-cols-2 gap-6 relative">
-                  {/* Dashed lines */}
                   <div className="absolute left-1/2 top-0 bottom-0 w-[1px] border-l border-dashed border-[#A2A2A2]"></div>
                   <div className="absolute top-1/2 left-0 right-0 h-[1px] border-t border-dashed border-[#A2A2A2]"></div>
-                  {/* Google */}
                   <button
                     onClick={() => handleProviderSignIn('google')}
                     className="bg-[#323232] rounded-[32px] h-[108px] flex items-center justify-center hover:bg-[#3a3a3a] transition-colors"
@@ -172,7 +182,6 @@ export default function SignUp() {
                     <Image src="/google.svg" alt="Google" width={44} height={44} />
                   </button>
 
-                  {/* GitHub */}
                   <button
                     onClick={() => handleProviderSignIn('github')}
                     className="bg-[#323232] rounded-[32px] h-[108px] flex items-center justify-center hover:bg-[#3a3a3a] transition-colors"
@@ -180,7 +189,6 @@ export default function SignUp() {
                     <Image src="/github.svg" alt="GitHub" width={44} height={44} className="invert" />
                   </button>
 
-                  {/* Slack */}
                   <button
                     onClick={() => handleProviderSignIn('slack')}
                     className="bg-[#323232] rounded-[32px] h-[108px] flex items-center justify-center hover:bg-[#3a3a3a] transition-colors"
@@ -188,21 +196,18 @@ export default function SignUp() {
                     <Image src="/slack.svg" alt="Slack" width={44} height={44} />
                   </button>
 
-                  {/* Reddit */}
                   <button
                     onClick={() => handleProviderSignIn('reddit')}
                     className="bg-[#323232] rounded-[32px] h-[108px] flex items-center justify-center hover:bg-[#3a3a3a] transition-colors"
                   >
-                    <Image src="/reddit.svg" alt="Reddit" width={128} height={128} />
+                    <Image src="/reddit.svg" alt="Reddit" width={44} height={44} />
                   </button>
                 </div>
               </div>
             </div>
-
-            <div className="block md:hidden text-white text-[32px] font-just-another-hand  my-8">
-              OR
-            </div>
-          </div>          {/* OR divider for desktop */}
+          </div>
+          
+          {/* OR divider for desktop */}
           <div className="hidden md:flex absolute inset-0 items-center justify-center pointer-events-none z-10">
             <div className="bg-[#1E1E1E] ml-7 px-4 py-2 text-white text-[32px] font-just-another-hand">
               OR

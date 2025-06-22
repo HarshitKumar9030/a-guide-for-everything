@@ -29,19 +29,19 @@ export default function ComingSoonModal({ isOpen, onClose, feature }: ComingSoon
                         exit={{ scale: 0.8, opacity: 0 }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
                         className="relative w-[90vw] max-w-5xl overflow-hidden rounded-[72px]"
-                        style={{ 
+                        style={{
                             aspectRatio: '1241/711',
                             maxHeight: '80vh'
                         }}
                         onClick={(e) => e.stopPropagation()}
-                    >                        
+                    >
                         <div className="absolute inset-0 bg-[#1E1E1E]" />
-                        
+
                         <div className="absolute inset-x-0 top-0 h-[72%] rounded-t-[72px] overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-b from-[#1BE1FF] to-[#B3FFCC]" />
-                            
+
                             {/* Curved bottom overlay */}
-                            <div 
+                            <div
                                 className="absolute bottom-0 left-0 right-0 h-[30%]"
                                 style={{
                                     background: '#1E1E1E',
@@ -51,7 +51,7 @@ export default function ComingSoonModal({ isOpen, onClose, feature }: ComingSoon
                                 }}
                             />
                         </div>
-                          <motion.button
+                        <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={(e) => {
@@ -65,7 +65,7 @@ export default function ComingSoonModal({ isOpen, onClose, feature }: ComingSoon
                                 strokeWidth={2}
                             />
                         </motion.button>
-                          {/* Content */}
+                        {/* Content */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 z-10">
                             <div
                                 className="font-just-another-hand text-white text-center mb-4 md:mb-8"
