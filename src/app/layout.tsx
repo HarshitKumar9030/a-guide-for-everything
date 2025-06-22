@@ -86,9 +86,8 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/logo.png", type: "image/png+xml" },
     ],
-    apple: "/logo.png",
+    apple: "/favicon.ico",
     shortcut: "/favicon.ico",
   },
   manifest: "/manifest.json",
@@ -141,7 +140,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              "name": "AGFE - A Guide for Everything",
+              "name": "Agfe",
               "description": "Get comprehensive, AI-powered guides for any topic. Create detailed, personalized guides using advanced AI models.",
               "url": "https://agfe.tech",
               "applicationCategory": "EducationalApplication",
