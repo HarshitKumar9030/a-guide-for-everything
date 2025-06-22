@@ -19,6 +19,11 @@ export default function NavBar() {
     const { data: session } = useSession();
     const isLoggedIn = !!session?.user;
 
+    const handlePush = (path: string) => {
+        setShowDropdown(false);
+        router.push(path);
+    }
+
     useEffect(() => {
         setIsClient(true);
     }, []);
@@ -305,9 +310,7 @@ export default function NavBar() {
                                                         initial={{ opacity: 0, x: -10 }}
                                                         animate={{ opacity: 1, x: 0 }}
                                                         transition={{ delay: 0.1 }}
-                                                        onClick={() => {
-                                                            router.push('/profile');
-                                                        }}
+                                                        onClick={() => handlePush('/profile')}
                                                         className="flex items-center px-4 py-2 w-full text-left text-white hover:bg-[#333333] transition-colors"
                                                     >
                                                         <User className="mr-2" size={18} />
@@ -318,9 +321,7 @@ export default function NavBar() {
                                                         initial={{ opacity: 0, x: -10 }}
                                                         animate={{ opacity: 1, x: 0 }}
                                                         transition={{ delay: 0.15 }}
-                                                        onClick={() => {
-                                                            setShowDropdown(false);
-                                                        }}
+                                                        onClick={()=> handlePush('/saved-guides')}
                                                         className="flex items-center px-4 py-2 w-full text-left text-white hover:bg-[#333333] transition-colors"
                                                     >
                                                         <BookMarked className="mr-2" size={18} />

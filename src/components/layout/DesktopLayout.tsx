@@ -1,4 +1,3 @@
-'use client';
 import React, { useState } from 'react';
 import CoolSquare from '../core/CoolSquare';
 import { DefaultTypewriterText } from '../animation/text';
@@ -7,7 +6,11 @@ import { Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import Stars from '../core/Stars';
 import ComingSoonModal from '../core/ComingSoonModal';
 import PleaseLogin from '../core/PleaseLogin';
+import Footer from '../core/Footer';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useGuide } from '@/contexts/GuideContext';
+import { GuideStorage } from '@/lib/guide-storage';
 
 // Export the model type and available models
 export type ModelType = 'gemini-flash-2.5' | 'llama-4-hackclub';
@@ -38,11 +41,12 @@ export const useSelectedModel = () => {
 export const updateSelectedModel = (model: ModelType) => {
     selectedModelGlobal = model;
     modelChangeListeners.forEach(listener => listener(model));
-    console.log('Model changed to:', model);
 };
 
 export default function DesktopLayout() {
     const { data: session } = useSession();
+    const router = useRouter();
+    const { startGeneration, finishGeneration, setError } = useGuide();
     const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-flash-2.5');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
@@ -51,11 +55,11 @@ export default function DesktopLayout() {
     const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
     const [isPleaseLoginModalOpen, setIsPleaseLoginModalOpen] = useState(false);
     const [shimmerTrigger, setShimmerTrigger] = useState(0);
+    const [isGenerating, setIsGenerating] = useState(false);
     const shimmerActive = useShimmer(shimmerTrigger);
 
     // Debug shimmer state
     React.useEffect(() => {
-        console.log('Shimmer active state changed:', shimmerActive);
     }, [shimmerActive]);    const handleModelChange = (model: ModelType) => {
         console.log('Model change started:', model);
         setSelectedModel(model);
@@ -65,17 +69,60 @@ export default function DesktopLayout() {
         // explicitly triggering shimmer 150ms after the model is changed
         setTimeout(() => {
             const newTrigger = Date.now(); // Using timestamp to ensure it's always different
-            console.log('Force triggering shimmer with timestamp:', newTrigger);
             setShimmerTrigger(newTrigger);
         }, 150);        console.log('Model changed, shimmer will trigger in 150ms:', model);
-    };
-
-    const handleInputClick = () => {
+    };    const handleInputClick = () => {
         if (!session) {
             setIsPleaseLoginModalOpen(true);
             return;
         }
         setIsInputMode(true);
+    };    const handleSubmit = async () => {
+        if (!inputValue.trim() || !session || isGenerating) return;
+
+        setIsGenerating(true);
+        startGeneration(inputValue.trim(), selectedModel);
+
+        try {
+            const response = await fetch('/api/ai/guide', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prompt: inputValue.trim(),
+                    model: selectedModel
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate guide');
+            }
+
+            const data = await response.json();
+            
+            // Add token estimation
+            const tokens = GuideStorage.estimateTokens(data.guide);
+            const guideData = { ...data, tokens };
+            
+            // Store guide data and navigate to guide page
+            GuideStorage.storeGuide(guideData);
+            finishGeneration();
+            setInputValue(''); // Clear input after successful generation
+            router.push('/guide');
+        } catch (error) {
+            console.error('Error generating guide:', error);
+            setError(error instanceof Error ? error.message : 'Failed to generate guide');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+        }
     };
 
     const currentModel = availableModels.find(m => m.id === selectedModel);
@@ -99,7 +146,7 @@ export default function DesktopLayout() {
     }, [isDropdownOpen]);
 
     return (
-        <div className="h-screen  bg-[#272727] w-screen flex items-center justify-center">
+        <div className="h-screen overflow-x-hidden bg-[#272727] w-screen flex items-center justify-center">
 
             <div className='absolute top-14 right-14'>
                 <CoolSquare
@@ -138,8 +185,7 @@ export default function DesktopLayout() {
                         >                            {!isInputMode && inputValue === '' ? (
                             <div className="text-white text-[18px] font-medium">
                                 <DefaultTypewriterText />
-                            </div>
-                        ) : (
+                            </div>                        ) : (
                             <textarea
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
@@ -148,12 +194,14 @@ export default function DesktopLayout() {
                                         setIsInputMode(false);
                                     }
                                 }}
+                                onKeyDown={handleKeyPress}
                                 placeholder="What's on your mind?"
                                 className="w-full h-full bg-transparent text-white text-[18px] placeholder-white/60 border-none outline-none resize-none font-medium"
                                 style={{ fontFamily: 'inherit' }}
                                 autoFocus={isInputMode}
+                                disabled={isGenerating}
                             />
-                        )}                            {showHoverBubble && !isInputMode && inputValue === '' && (
+                        )}{showHoverBubble && !isInputMode && inputValue === '' && (
                             <div className="absolute -right-4 top-1/2 transform translate-x-full -translate-y-1/2 z-20">
                                 <div className="bg-[#272727] text-white px-3 py-2 rounded-lg shadow-lg border border-white/10 text-sm font-medium whitespace-nowrap">
                                     Thinking something?
@@ -194,9 +242,19 @@ export default function DesktopLayout() {
                                             ))}
                                         </div>
                                     )}
-                                </div>
-                                <div className="box p-2 bg-primary text-background rounded-xl cursor-pointer hover:bg-primary/80 transition-colors">
-                                    <ArrowUp />
+                                </div>                                <div 
+                                    className={`box p-2 rounded-xl cursor-pointer transition-colors ${
+                                        inputValue.trim() && !isGenerating 
+                                            ? 'bg-primary text-background hover:bg-primary/80' 
+                                            : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                    onClick={handleSubmit}
+                                >
+                                    {isGenerating ? (
+                                        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <ArrowUp />
+                                    )}
                                 </div>
                             </div>
                         </div>

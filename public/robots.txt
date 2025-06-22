@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://agfe.tech/sitemap.xml
+
+Crawl-delay: 1
+
+Allow: /favicon.ico
+Allow: /logo.svg
+Allow: /manifest.json
+Allow: /_next/static/
+Allow: /api/guides/*/
+
+
+
+Disallow: /api/auth/
+Disallow: /api/ai/

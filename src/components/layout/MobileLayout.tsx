@@ -1,17 +1,22 @@
-'use client';
 import React, { useState } from 'react';
 import { Plus, ArrowUp, ChevronDown } from 'lucide-react';
 // import Stars from '../core/Stars';
 import CoolSquare from '../core/CoolSquare';
 import ComingSoonModal from '../core/ComingSoonModal';
 import PleaseLogin from '../core/PleaseLogin';
+import Footer from '../core/Footer';
 import { DefaultTypewriterText } from '../animation/text';
 import { ModelType, availableModels, updateSelectedModel } from './DesktopLayout';
 import Shimmer, { useShimmer } from '../animation/shimmer';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useGuide } from '@/contexts/GuideContext';
+import { GuideStorage } from '@/lib/guide-storage';
 
 export default function MobileLayout() {
   const { data: session } = useSession();
+  const router = useRouter();
+  const { startGeneration, finishGeneration, setError } = useGuide();
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-flash-2.5');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -19,6 +24,7 @@ export default function MobileLayout() {
   const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [isPleaseLoginModalOpen, setIsPleaseLoginModalOpen] = useState(false);
   const [shimmerTrigger, setShimmerTrigger] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
   const shimmerActive = useShimmer(shimmerTrigger);
 
   const handleModelChange = (model: ModelType) => {
@@ -32,13 +38,58 @@ export default function MobileLayout() {
       setShimmerTrigger(newTrigger);
     }, 150);
   };
-
   const handleInputClick = () => {
     if (!session) {
       setIsPleaseLoginModalOpen(true);
       return;
     }
     setIsInputMode(true);
+  };  const handleSubmit = async () => {
+    if (!inputValue.trim() || !session || isGenerating) return;
+
+    setIsGenerating(true);
+    startGeneration(inputValue.trim(), selectedModel);
+
+    try {
+      const response = await fetch('/api/ai/guide', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: inputValue.trim(),
+          model: selectedModel
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate guide');
+      }
+
+      const data = await response.json();
+      
+      // Add token estimation
+      const tokens = GuideStorage.estimateTokens(data.guide);
+      const guideData = { ...data, tokens };
+      
+      // Store guide data and navigate to guide page
+      GuideStorage.storeGuide(guideData);
+      finishGeneration();
+      setInputValue(''); // Clear input after successful generation
+      router.push('/guide');
+    } catch (error) {
+      console.error('Error generating guide:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate guide');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
   };
 
   const currentModel = availableModels.find(m => m.id === selectedModel);
@@ -108,8 +159,7 @@ export default function MobileLayout() {
             {!isInputMode && inputValue === '' ? (
               <div className="text-white text-[16px] font-medium  mt-4">
                 <DefaultTypewriterText />
-              </div>
-            ) : (
+              </div>            ) : (
               <textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
@@ -118,10 +168,12 @@ export default function MobileLayout() {
                     setIsInputMode(false);
                   }
                 }}
+                onKeyDown={handleKeyPress}
                 placeholder="What's on your mind?"
                 className="w-full h-full bg-transparent text-white text-[16px] placeholder-white/60 border-none outline-none resize-none font-medium"
                 style={{ fontFamily: 'inherit' }}
                 autoFocus={isInputMode}
+                disabled={isGenerating}
               />
             )}
           </div>
@@ -162,10 +214,20 @@ export default function MobileLayout() {
                       ))}
                     </div>
                   )}
-                </div>
-
-                <button className="w-[36px] h-[36px] bg-primary text-background rounded-[12px] flex items-center justify-center hover:bg-primary/80 transition-colors">
-                  <ArrowUp size={20} strokeWidth={2.5} color="#1E1E1E" />
+                </div>                <button 
+                  className={`w-[36px] h-[36px] rounded-[12px] flex items-center justify-center transition-colors ${
+                    inputValue.trim() && !isGenerating 
+                      ? 'bg-primary text-background hover:bg-primary/80' 
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
+                  onClick={handleSubmit}
+                  disabled={!inputValue.trim() || isGenerating}
+                >
+                  {isGenerating ? (
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ArrowUp size={20} strokeWidth={2.5} color={inputValue.trim() ? "#1E1E1E" : "#9CA3AF"} />
+                  )}
                 </button>
               </div>
             </div>

@@ -11,22 +11,18 @@ import Image from 'next/image';
 
 export default function ResponsiveLayout() {
   const { isMobile } = useResponsive();
-  // Show loading state on initial render to prevent hydration mismatch
   const [mounted, setMounted] = React.useState(false);
   const [showLoader, setShowLoader] = React.useState(true);
   
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setMounted(true);
-      // Add a slight delay before hiding loader for smooth transition
       setTimeout(() => {
         setShowLoader(false);
       }, 100);
     }, 3000); 
 
-    return () => clearTimeout(timer);  }, []);
-
-  return (
+    return () => clearTimeout(timer);  }, []);  return (
     <AnimatePresence mode="wait">
       {showLoader ? (
         <motion.div
@@ -78,7 +74,6 @@ export default function ResponsiveLayout() {
               />
             </motion.div>
 
-            {/* Loading text */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

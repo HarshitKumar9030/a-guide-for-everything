@@ -1,0 +1,64 @@
+{
+  "name": "AGFE - A Guide for Everything",
+  "short_name": "AGFE",
+  "description": "Get comprehensive, AI-powered guides for any topic",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1E1E1E",
+  "theme_color": "#1BE1FF",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logo.png",
+      "sizes": "1280x720",
+      "type": "image/png+xml",
+      "platform": "wide",
+      "label": "AGFE Guide Generator"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Create Guide",
+      "short_name": "New Guide",
+      "description": "Create a new AI-powered guide",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Saved Guides",
+      "short_name": "Saved",
+      "description": "View your saved guides",
+      "url": "/saved-guides",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
