@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Design
+
+The AGFE project follows a modern, professional design system. You can view the complete design prototype and specifications on Figma:
+
+🎨 **[View Design Prototype](https://www.figma.com/proto/RoCqJAHP5s45ZHVCUBapXN/AGFE?node-id=0-1&t=VCt1KkCQj1Tp2wse-1)**
+
+The design includes comprehensive layouts for all features including guide generation, saved guides management, authentication flows, and responsive mobile/desktop experiences.
+
 ## Getting Started
 
 First, run the development server:
