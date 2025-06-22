@@ -2,19 +2,40 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 
 export default function SignIn() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      router.push('/');
+    }
+  }, [status, session, router]);
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-[#141414] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (status === 'authenticated') {
+    return null;
+  }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +75,6 @@ export default function SignIn() {
         className="w-full max-w-[1276px] bg-[#1E1E1E] rounded-[72px] shadow-2xl relative overflow-hidden px-8 py-12 mx-4 md:mx-auto"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left Side - Form */}
           <div className="flex flex-col space-y-8 px-4 md:px-12">
             <h1 className="text-[96px] md:text-[128px] text-white font-just-another-hand leading-none">
               Sign In

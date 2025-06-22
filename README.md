@@ -18,6 +18,33 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Environment Setup
+
+Copy `.env.example` to `.env.local` and fill in your configuration:
+
+```bash
+cp .env.example .env.local
+```
+
+### Mailgun Setup
+
+1. Sign up for a [Mailgun account](https://www.mailgun.com/)
+2. Get your API key from the Mailgun dashboard
+3. Add your domain to Mailgun or use the sandbox domain for testing
+4. Add the following variables to your `.env.local`:
+
+```bash
+MAILGUN_API_KEY=your-mailgun-api-key
+MAILGUN_DOMAIN=your-mailgun-domain.com
+MAILGUN_URL=https://api.mailgun.net  # or https://api.eu.mailgun.net for EU
+APP_NAME=AGFE
+```
+
+The email functionality includes:
+- Password reset emails with styled HTML templates
+- Automatic fallback to plain text
+- Secure token generation and validation
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

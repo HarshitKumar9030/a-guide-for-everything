@@ -286,7 +286,7 @@ export default function NavBar() {
                                                         animate={{ opacity: 1, x: 0 }}
                                                         transition={{ delay: 0.1 }}
                                                         onClick={() => {
-                                                            setShowDropdown(false);
+                                                            router.push('/profile');
                                                         }}
                                                         className="flex items-center px-4 py-2 w-full text-left text-white hover:bg-[#333333] transition-colors"
                                                     >
