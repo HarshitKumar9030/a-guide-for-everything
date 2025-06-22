@@ -55,13 +55,11 @@ export const authOptions: NextAuthOptions = {
 
           if (!isPasswordValid) {
             return null;
-          }
-
-          return {
+          }          return {
             id: user._id.toString(),
             email: user.email,
             name: user.name,
-            image: user.image || null,
+            image: user.avatar?.secure_url || user.image || null,
           };
         } catch (error) {
           console.error("Authorization error:", error);
@@ -82,12 +80,29 @@ export const authOptions: NextAuthOptions = {
       if (account) {
         token.provider = account.provider;
       }
+      
+      // Always fetch fresh user data to get updated avatar
+      if (token.email) {
+        try {
+          const { db } = await connectToDatabase();
+          const dbUser = await db.collection("users").findOne({
+            email: token.email
+          });
+          if (dbUser?.avatar?.secure_url) {
+            token.image = dbUser.avatar.secure_url;
+          }
+        } catch (error) {
+          console.error("Error fetching user avatar:", error);
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.provider = token.provider as string;
+        session.user.image = token.image as string;
       }
       return session;
     },

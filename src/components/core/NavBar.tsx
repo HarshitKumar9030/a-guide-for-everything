@@ -7,6 +7,7 @@ import { useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
 import { User, LogOut, BookMarked, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Avatar from '@/components/core/Avatar';
 
 export default function NavBar() {
     const router = useRouter();
@@ -14,8 +15,13 @@ export default function NavBar() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [isClient, setIsClient] = useState(false);
     const { data: session } = useSession();
     const isLoggedIn = !!session?.user;
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -47,7 +53,11 @@ export default function NavBar() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const userInitial = session?.user?.name?.charAt(0) || 'U'; function MobileNavDrawer({
+    const userInitial = session?.user?.name?.charAt(0) || 'U';
+
+    if (!isClient) {
+        return null; // Prevent hydration mismatch
+    } function MobileNavDrawer({
         isOpen,
         onClose,
         isLoggedIn,
@@ -88,7 +98,7 @@ export default function NavBar() {
                             <div className="px-6 py-6">
                                 <div className="flex justify-between items-center mb-6">
                                     <Image
-                                        onClick={()=> router.replace('/')}
+                                        onClick={() => router.replace('/')}
                                         src="/logo-transparent.svg"
                                         alt="AGFE Logo"
                                         width={100}
@@ -106,21 +116,23 @@ export default function NavBar() {
                                 </div>
 
                                 {isLoggedIn ? (
-                                    <>
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.1 }}
-                                            className="flex items-center space-x-4 mb-6 p-4 bg-[#272727] rounded-2xl"
-                                        >
-                                            <div className="bg-[#333] w-12 h-12 rounded-full flex items-center justify-center">
-                                                <span className="text-white text-xl">{session?.user?.name?.charAt(0) || 'U'}</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-white font-medium">{session?.user?.name}</p>
-                                                <p className="text-gray-400 text-sm truncate">{session?.user?.email}</p>
-                                            </div>
-                                        </motion.div>
+                                    <>                                        <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.1 }}
+                                        className="flex items-center space-x-4 mb-6 p-4 bg-[#272727] rounded-2xl"
+                                    >
+                                        <Avatar
+                                            src={session?.user?.image}
+                                            alt={session?.user?.name || 'User'}
+                                            size={48}
+                                            className="flex-shrink-0"
+                                        />
+                                        <div>
+                                            <p className="text-white font-medium">{session?.user?.name}</p>
+                                            <p className="text-gray-400 text-sm truncate">{session?.user?.email}</p>
+                                        </div>
+                                    </motion.div>
                                         <div className="space-y-2">
                                             <motion.div
                                                 initial={{ opacity: 0, x: -20 }}
@@ -182,65 +194,73 @@ export default function NavBar() {
     }
     return (
         <>
-            <AnimatePresence>        
+            <AnimatePresence>
                 {!isMobile && showNavbar && (
-                <motion.div
-                    initial={{
-                        y: -100,
-                        scale: 0.9,
-                        opacity: 0
-                    }}
-                    animate={{
-                        y: 0,
-                        scale: 1,
-                        opacity: 1
-                    }}
-                    exit={{
-                        y: -100,
-                        scale: 0.9,
-                        opacity: 0
-                    }}
-                    transition={{
-                        type: 'spring',
-                        stiffness: 400,
-                        damping: 25,
-                        mass: 0.8
-                    }}
-                    className="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-[780px] px-4"
-                >
-                    <div className="mt-3">
-                        <div className="bg-[#1E1E1E] rounded-[30px] h-[86px] flex items-center justify-between px-6 shadow-2xl border border-white/5">
-                            <div>
-                                <Image
-                                    src="/logo-transparent.svg"
-                                    onClick={() => router.replace('/')}
-                                    alt="AGFE Logo"
-                                    width={84}
-                                    height={28}
-                                    className="object-contain"
-                                />
-                            </div>
+                    <motion.div
+                        initial={{
+                            y: -100,
+                            scale: 0.9,
+                            opacity: 0
+                        }}
+                        animate={{
+                            y: 0,
+                            scale: 1,
+                            opacity: 1
+                        }}
+                        exit={{
+                            y: -100,
+                            scale: 0.9,
+                            opacity: 0
+                        }}
+                        transition={{
+                            type: 'spring',
+                            stiffness: 400,
+                            damping: 25,
+                            mass: 0.8
+                        }}
+                        className="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-[780px] px-4"
+                    >
+                        <div className="mt-3">
+                            <div className="bg-[#1E1E1E] rounded-[30px] h-[86px] flex items-center justify-between px-6 shadow-2xl border border-white/5">
+                                <div>
+                                    <Image
+                                        src="/logo-transparent.svg"
+                                        onClick={() => router.replace('/')}
+                                        alt="AGFE Logo"
+                                        width={84}
+                                        height={28}
+                                        className="object-contain"
+                                    />
+                                </div>
 
-                            {!isLoggedIn ? (
-                                <Link href="/auth/signin">
+                                {!isLoggedIn ? (
+                                    <Link href="/auth/signin">
+                                        <motion.div
+                                            className="bg-[#272727] rounded-[17px] px-5 py-2 cursor-pointer hover:bg-[#333333] transition-colors"
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                        >
+                                            <span className="text-white text-[16px]">Get Started</span>
+                                        </motion.div>
+                                    </Link>
+                                ) : (<div className="relative">
                                     <motion.div
-                                        className="bg-[#272727] rounded-[17px] px-5 py-2 cursor-pointer hover:bg-[#333333] transition-colors"
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                    >
-                                        <span className="text-white text-[16px]">Get Started</span>
-                                    </motion.div>
-                                </Link>
-                            ) : (
-                                <div className="relative">
-                                    <motion.div
-                                        className="bg-[#272727] w-[58px] h-[58px] rounded-full flex items-center justify-center cursor-pointer"
+                                        className="bg-[#272727] w-[58px] h-[58px] rounded-full flex items-center justify-center cursor-pointer overflow-hidden"
                                         onClick={() => setShowDropdown(!showDropdown)}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                         transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                     >
-                                        <span className="text-white text-[20px] font-normal">{userInitial}</span>
+                                        {session?.user?.image ? (
+                                            <Avatar
+                                                src={session.user.image}
+                                                alt={session.user.name || 'User'}
+                                                size={58}
+                                                className="border-0"
+                                            />
+                                        ) : (
+                                            <span className="text-white text-[20px] font-normal">{userInitial}</span>
+                                        )}
                                     </motion.div>
 
                                     <AnimatePresence>
@@ -325,11 +345,11 @@ export default function NavBar() {
                                         )}
                                     </AnimatePresence>
                                 </div>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
-                </motion.div>
-            )}
+                    </motion.div>
+                )}
 
                 {isMobile && (
                     <motion.div

@@ -1,35 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Camera } from 'lucide-react';
-import Image from 'next/image';
+import AvatarUpload from '@/components/core/AvatarUpload';
+import ConfirmModal from '@/components/core/ConfirmModal';
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
-    const router = useRouter();
-
-    // User data state
+    const router = useRouter();    // User data state
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [avatar, setAvatar] = useState('/avatars/default.png');
+    const [avatar, setAvatar] = useState<string | null>(null);
     const [provider, setProvider] = useState('Email');
 
-    // Password update state
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [passwordError, setPasswordError] = useState(''); const [passwordSuccess, setPasswordSuccess] = useState('');
-
+    const [confirmPassword, setConfirmPassword] = useState('');    const [passwordError, setPasswordError] = useState(''); 
+    const [passwordSuccess, setPasswordSuccess] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
+    
+    // Delete account modal state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);useEffect(() => {
         if (session?.user) {
             setName(session.user.name || '');
             setEmail(session.user.email || '');
-            setAvatar(session.user.image || '/logo.svg');
+            setAvatar(session.user.image || null);
             setProvider(session.user.provider || 'Email');
         }
     }, [session]);
@@ -85,20 +83,39 @@ export default function ProfilePage() {
         } finally {
             setIsLoading(false);
         }
+    }; const handleAvatarUpdate = (newAvatarUrl: string | null) => {
+        setAvatar(newAvatarUrl); // Can now be null
+        // The session will be updated automatically via NextAuth callbacks
+        window.location.reload(); // Refresh to get updated session
+    };    const handleDeleteAccount = async () => {
+        setShowDeleteModal(true);
     };
 
-    const handleAvatarClick = () => {
-        document.getElementById('avatar-upload')?.click();
-    };
+    const confirmDeleteAccount = async () => {
+        setIsDeleting(true);
+        
+        try {
+            const response = await fetch('/api/auth/delete-account', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
 
-    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+            const data = await response.json();
 
-    };
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete account');
+            }
 
-    const handleDeleteAccount = async () => {
-        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+            // Sign out and redirect to home page
+            await signOut({ callbackUrl: '/' });
+        } catch (error) {
+            console.error('Failed to delete account:', error);
+            alert('Failed to delete account. Please try again.');
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteModal(false);
         }
     };
 
@@ -149,61 +166,31 @@ export default function ProfilePage() {
                             <p className="text-white text-2xl">
                                 Your Login Provider is <span className="text-primary">{provider}</span>
                             </p>
-                        </div>
-
-                        <div className="flex flex-col md:flex-row gap-4 pt-8">
+                        </div>                        <div className="flex flex-col md:flex-row gap-4 pt-8">
                             <button
                                 onClick={handleExportGuides}
-                                className="h-[83px] bg-[#2A2A2A] hover:bg-[#323232] text-white rounded-[32px] border border-[#323232] px-6 transition-colors"
+                                className="h-[66px] py-2 md:py-0 bg-[#2A2A2A] hover:bg-[#323232] text-white text-lg font-medium rounded-[26px] border border-[#3a3a3a] px-5 transition-colors flex-1 min-w-[160px]"
                             >
                                 Export Guides
                             </button>
 
                             <button
                                 onClick={handleDeleteAccount}
-                                className="h-[83px] bg-[#410000] hover:bg-[#4B0000] text-white rounded-[32px] border border-[#4B0000] px-6 transition-colors"
+                                className="h-[66px] py-2 md:py-0 bg-[#410000] hover:bg-[#4B0000] text-white text-lg font-medium rounded-[26px] border border-[#5a0000] px-5 transition-colors flex-1 min-w-[160px]"
                             >
                                 Delete Account
                             </button>
                         </div>
                     </div>          </div>
 
-                <div className="hidden lg:block absolute top-8 bottom-8 left-1/2 transform -translate-x-0.5 border-l border-dashed border-[#323232]"></div>
-
-                <div className="p-8 md:p-12 lg:p-16 border-t border-dashed lg:border-t-0 border-[#323232]">            <div className="flex flex-col items-center mb-12">
-                    <div className="relative">
-                        <div className="w-[220px] h-[220px] rounded-full bg-[#272727] border border-[#323232] overflow-hidden">
-                            {avatar && (
-                                <Image
-                                    src={avatar}
-                                    alt="Profile picture"
-                                    width={220}
-                                    height={220}
-                                    className="w-full h-full object-cover"
-                                />
-                            )}
-                        </div>
-
-                        <div
-                            onClick={handleAvatarClick}
-                            className="absolute bottom-4 right-4 w-[60px] h-[60px] rounded-full bg-primary flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
-                        >
-                            <Camera size={24} color="#1E1E1E" />
-                        </div>
-
-                        <input
-                            id="avatar-upload"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleAvatarChange}
+                <div className="hidden lg:block absolute top-8 bottom-8 left-1/2 transform -translate-x-0.5 border-l border-dashed border-[#323232]"></div>                <div className="p-8 md:p-12 lg:p-16 border-t border-dashed lg:border-t-0 border-[#323232]">
+                    <div className="flex flex-col items-center mb-16">
+                        <AvatarUpload
+                            currentAvatar={avatar}
+                            onAvatarUpdate={handleAvatarUpdate}
+                            size={220}
                         />
                     </div>
-
-                    <span className="mt-4 text-white text-center">
-                        Update your Avatar
-                    </span>
-                </div>
 
                     <div className="mt-8">
                         <div className="flex items-center mb-4">
@@ -280,10 +267,22 @@ export default function ProfilePage() {
                                     </button>
                                 </div>
                             </div>
-                        </form>
-                    </div>
-                </div>
+                        </form>            </div>
             </div>
+
+            {/* Delete Account Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDeleteAccount}
+                title="Delete Account"
+                message="Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your data including saved guides and profile information."
+                confirmText="Delete Account"
+                cancelText="Cancel"
+                isDangerous={true}
+                isLoading={isDeleting}
+            />
+        </div>
             </div>
         </div>
     );

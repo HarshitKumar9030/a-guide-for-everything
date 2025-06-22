@@ -45,6 +45,25 @@ The email functionality includes:
 - Automatic fallback to plain text
 - Secure token generation and validation
 
+### Cloudinary Setup
+
+1. Sign up for a [Cloudinary account](https://cloudinary.com/)
+2. Get your credentials from the Cloudinary dashboard
+3. Add the following variables to your `.env.local`:
+
+```bash
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+```
+
+The avatar functionality includes:
+- Image upload with automatic optimization
+- Face-detection cropping for avatars
+- 5MB file size limit
+- Automatic format conversion (WebP, AVIF)
+- Responsive image delivery
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
