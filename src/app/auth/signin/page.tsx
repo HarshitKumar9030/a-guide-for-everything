@@ -12,12 +12,14 @@ import { useSession } from 'next-auth/react';
 export default function SignIn() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
-  const [email, setEmail] = useState('');
+    const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showEmailVerificationError, setShowEmailVerificationError] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   useEffect(() => {
     if (status === 'authenticated' && session) {
@@ -36,11 +38,11 @@ export default function SignIn() {
   if (status === 'authenticated') {
     return null;
   }
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setShowEmailVerificationError(false);
 
     try {
       const result = await signIn('credentials', {
@@ -50,7 +52,12 @@ export default function SignIn() {
       });
 
       if (result?.error) {
-        setError('Invalid email or password');
+        if (result.error.includes('EMAIL_NOT_VERIFIED')) {
+          setShowEmailVerificationError(true);
+          setError('Please verify your email address before signing in.');
+        } else {
+          setError('Invalid email or password');
+        }
       } else {
         router.push('/');
       }
@@ -59,6 +66,39 @@ export default function SignIn() {
       setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+
+    setIsResendingVerification(true);
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setVerificationSent(true);
+        setError('');
+        alert('Verification email sent! Please check your inbox.');
+      } else {
+        setError(data.error || 'Failed to send verification email.');
+      }
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      setError('Failed to send verification email. Please try again.');
+    } finally {
+      setIsResendingVerification(false);
     }
   };
 
@@ -123,10 +163,22 @@ export default function SignIn() {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-              </div>
-
-              {error && (
+              </div>              {error && (
                 <div className="text-red-500 text-sm">{error}</div>
+              )}              {showEmailVerificationError && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                  <p className="text-white text-sm mb-3">
+                    Your email address is not verified. Please check your email for a verification link, or click below to resend it.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={isResendingVerification || verificationSent}
+                    className="bg-primary hover:bg-primary/80 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {isResendingVerification ? 'Sending...' : verificationSent ? 'Sent!' : 'Resend Verification Email'}
+                  </button>
+                </div>
               )}
 
               <button

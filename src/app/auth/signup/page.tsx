@@ -11,13 +11,13 @@ import { motion } from 'framer-motion';
 export default function SignUp() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
-  const [name, setName] = useState('');
+    const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   useEffect(() => {
     if (status === 'authenticated' && session) {
@@ -36,7 +36,6 @@ export default function SignUp() {
   if (status === 'authenticated') {
     return null;
   }
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -55,13 +54,8 @@ export default function SignUp() {
         throw new Error(data.message || 'Something went wrong');
       }
 
-      await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
-      });
-
-      router.push('/');
+      setRegistrationSuccess(true);
+      
     } catch (error: unknown) {
       console.error('Sign up error:', error);
       setError(error instanceof Error ? error.message : 'Something went wrong');
@@ -82,87 +76,129 @@ export default function SignUp() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-[1276px] bg-[#1E1E1E] rounded-[72px] shadow-2xl relative overflow-hidden px-8 py-12 mx-4 md:mx-auto"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left Side - Form */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">          {/* Left Side - Form or Success Message */}
           <div className="flex flex-col space-y-8 px-4 md:px-12">
-            <h1 className="text-[96px] md:text-[128px] text-white font-just-another-hand leading-none">
-              Sign Up
-            </h1>
+            {!registrationSuccess ? (
+              <>
+                <h1 className="text-[96px] md:text-[128px] text-white font-just-another-hand leading-none">
+                  Sign Up
+                </h1>
 
-            <form onSubmit={handleSignUp} className="flex flex-col space-y-8">
-              <div className="flex flex-col space-y-2">
-                <label htmlFor="name" className="text-white uppercase text-[16px]">
-                  NAME
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Please Enter Your Name...."
-                  className="p-4 bg-[#272727] text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/60"
-                  required
-                />
-              </div>
+                <form onSubmit={handleSignUp} className="flex flex-col space-y-8">
+                  <div className="flex flex-col space-y-2">
+                    <label htmlFor="name" className="text-white uppercase text-[16px]">
+                      NAME
+                    </label>
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Please Enter Your Name...."
+                      className="p-4 bg-[#272727] text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      required
+                    />
+                  </div>
 
-              <div className="flex flex-col space-y-2">
-                <label htmlFor="email" className="text-white uppercase text-[16px]">
-                  EMAIL
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Please Enter Your Email...."
-                  className="p-4 bg-[#272727] text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/60"
-                  required
-                />
-              </div>
+                  <div className="flex flex-col space-y-2">
+                    <label htmlFor="email" className="text-white uppercase text-[16px]">
+                      EMAIL
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Please Enter Your Email...."
+                      className="p-4 bg-[#272727] text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      required
+                    />
+                  </div>
 
-              <div className="flex flex-col space-y-2">
-                <label htmlFor="password" className="text-white uppercase text-[16px]">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Please Enter Your Password...."
-                    className="p-4 pr-12 w-full bg-[#272727] text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/60"
-                    required
-                  />
+                  <div className="flex flex-col space-y-2">
+                    <label htmlFor="password" className="text-white uppercase text-[16px]">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Please Enter Your Password...."
+                        className="p-4 pr-12 w-full bg-[#272727] text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/60"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white"
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="text-red-500 text-sm">{error}</div>
+                  )}
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white"
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-[#323232] hover:bg-[#3a3a3a] text-white font-just-another-hand text-[32px] py-4 rounded-2xl transition-colors"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {isLoading ? 'Loading...' : 'Submit'}
+                  </button>
+                </form>
+
+                <p className="text-center text-white">
+                  Already have an account?{' '}
+                  <Link href="/auth/signin" className="text-primary hover:underline">
+                    Sign In
+                  </Link>
+                </p>
+              </>
+            ) : (
+              <div className="text-center space-y-6">
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-white font-just-another-hand text-[96px] leading-none mb-4">
+                    Check Your Email
+                  </h1>
+                  <h2 className="text-white text-2xl font-semibold mb-4">Account Created Successfully!</h2>                  <p className="text-gray-300 text-lg mb-6">
+                    We&apos;ve sent a verification email to <span className="text-primary">{email}</span>.
+                    Please click the link in the email to verify your account before signing in.
+                  </p>
+                  <p className="text-gray-400 text-sm mb-6">
+                    Can&apos;t find the email? Check your spam folder or wait a few minutes for it to arrive.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <Link
+                    href="/auth/signin"
+                    className="block bg-primary hover:bg-primary/80 text-white font-medium px-6 py-3 rounded-xl transition-colors"
+                  >
+                    Go to Sign In
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setRegistrationSuccess(false);
+                      setName('');
+                      setEmail('');
+                      setPassword('');
+                    }}
+                    className="block w-full bg-[#2A2A2A] hover:bg-[#323232] text-white font-medium px-6 py-3 rounded-xl transition-colors"
+                  >
+                    Create Another Account
                   </button>
                 </div>
               </div>
-
-              {error && (
-                <div className="text-red-500 text-sm">{error}</div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="bg-[#323232] hover:bg-[#3a3a3a] text-white font-just-another-hand text-[32px] py-4 rounded-2xl transition-colors"
-              >
-                {isLoading ? 'Loading...' : 'Submit'}
-              </button>
-            </form>
-
-            <p className="text-center text-white">
-              Already have an account?{' '}
-              <Link href="/auth/signin" className="text-primary hover:underline">
-                Sign In
-              </Link>
-            </p>
+            )}
           </div>
           
           <div className="block md:hidden w-full text-center my-8">

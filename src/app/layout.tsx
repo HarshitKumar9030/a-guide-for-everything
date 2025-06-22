@@ -98,18 +98,18 @@ export const metadata: Metadata = {
   category: "education",
   classification: "Education, AI, Learning Platform",
   referrer: "origin-when-cross-origin",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
   colorScheme: "dark",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#1BE1FF" },
     { media: "(prefers-color-scheme: dark)", color: "#1BE1FF" },
   ],
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
-
 };
 
 export default function RootLayout({

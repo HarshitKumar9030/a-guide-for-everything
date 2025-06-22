@@ -26,8 +26,7 @@ export const authOptions: NextAuthOptions = {
     RedditProvider({
       clientId: process.env.REDDIT_CLIENT_ID!,
       clientSecret: process.env.REDDIT_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
+    }),    CredentialsProvider({
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -48,6 +47,10 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
+          if (user.password && !user.emailVerified) {
+            throw new Error("EMAIL_NOT_VERIFIED");
+          }
+
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             user.password
@@ -55,14 +58,18 @@ export const authOptions: NextAuthOptions = {
 
           if (!isPasswordValid) {
             return null;
-          }          return {
+          }
+
+          return {
             id: user._id.toString(),
             email: user.email,
             name: user.name,
             image: user.avatar?.secure_url || user.image || null,
-          };
-        } catch (error) {
+          };        } catch (error) {
           console.error("Authorization error:", error);
+          if (error instanceof Error && error.message === "EMAIL_NOT_VERIFIED") {
+            throw error;
+          }
           return null;
         }
       }

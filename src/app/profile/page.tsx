@@ -20,6 +20,7 @@ export default function ProfilePage() {
     const [confirmPassword, setConfirmPassword] = useState('');    const [passwordError, setPasswordError] = useState(''); 
     const [passwordSuccess, setPasswordSuccess] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     
     // Delete account modal state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -117,9 +118,58 @@ export default function ProfilePage() {
             setIsDeleting(false);
             setShowDeleteModal(false);
         }
-    };
+    };    const handleExportGuides = async () => {
+        try {
+            setIsExporting(true);
+            
+            const response = await fetch('/api/export/guides', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sendEmail: true }),
+            });
 
-    const handleExportGuides = async () => {
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to export guides');
+            }
+
+            alert(`Success! Your guides export (${data.guideCount} guides) has been sent to your email.`);
+        } catch (error) {
+            console.error('Export error:', error);
+            // Fallback: try to download directly
+            try {
+                const fallbackResponse = await fetch('/api/export/guides', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sendEmail: false }),
+                });
+
+                if (fallbackResponse.ok) {
+                    const blob = await fallbackResponse.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `agfe-guides-${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    alert('Export downloaded successfully!');
+                } else {
+                    throw new Error('Export failed');
+                }
+            } catch (fallbackError) {
+                console.error('Fallback export error:', fallbackError);
+                alert('Failed to export guides. Please try again later.');
+            }
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     if (status === 'loading') {
@@ -166,12 +216,12 @@ export default function ProfilePage() {
                             <p className="text-white text-2xl">
                                 Your Login Provider is <span className="text-primary">{provider}</span>
                             </p>
-                        </div>                        <div className="flex flex-col md:flex-row gap-4 pt-8">
-                            <button
+                        </div>                        <div className="flex flex-col md:flex-row gap-4 pt-8">                            <button
                                 onClick={handleExportGuides}
-                                className="h-[66px] py-2 md:py-0 bg-[#2A2A2A] hover:bg-[#323232] text-white text-lg font-medium rounded-[26px] border border-[#3a3a3a] px-5 transition-colors flex-1 min-w-[160px]"
+                                disabled={isExporting}
+                                className="h-[66px] py-2 md:py-0 bg-[#2A2A2A] hover:bg-[#323232] text-white text-lg font-medium rounded-[26px] border border-[#3a3a3a] px-5 transition-colors flex-1 min-w-[160px] disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                Export Guides
+                                {isExporting ? 'Exporting...' : 'Export Guides'}
                             </button>
 
                             <button
