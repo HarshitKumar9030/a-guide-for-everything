@@ -219,7 +219,7 @@ export default function SignUp() {
                     onClick={() => handleProviderSignIn('reddit')}
                     className="bg-[#323232] rounded-[32px] h-[108px] flex items-center justify-center hover:bg-[#3a3a3a] transition-colors"
                   >
-                    <Image src="/reddit.svg" alt="Reddit" width={44} height={44} />
+                    <Image src="/reddit.svg" alt="Reddit" width={128} height={128} />
                   </button>
                 </div>
               </div>
