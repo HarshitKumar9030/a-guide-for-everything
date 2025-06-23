@@ -179,7 +179,6 @@ export default function GuidePage() {
     };    const handleShare = async () => {
         if (!guideData) return;
 
-        // Check if guide is saved first
         if (!isSaved || !shareableLink) {
             return; // Button should be disabled, but just in case
         }
@@ -607,8 +606,8 @@ export default function GuidePage() {
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >                            <div className="bg-[#1E1E1E] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 bg-green-600/20 rounded-xl border border-green-500/30">
-                                        <Save className="w-5 h-5 text-green-400" />
+                                    <div className="p-2 bg-primary/20 rounded-xl border border-primary/30">
+                                        <Save className="w-5 h-5 text-primary" />
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-semibold text-white">Guide Saved Successfully!</h3>
@@ -641,7 +640,8 @@ export default function GuidePage() {
                                             <Copy className="w-4 h-4" />
                                         </motion.button>
                                     </div>
-                                </div>                                <div className="flex gap-3">
+                                </div>                                
+                                <div className="flex gap-3">
                                     <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -655,7 +655,7 @@ export default function GuidePage() {
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => router.push('/saved-guides')}
-                                        className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
+                                        className="flex-1 bg-white/10 text-white py-2.5 rounded-xl font-medium hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
                                     >
                                         <BookOpen className="w-4 h-4" />
                                         Manage
@@ -674,7 +674,6 @@ export default function GuidePage() {
                 )}
             </AnimatePresence>
 
-            {/* Please Login Modal */}
             <PleaseLogin
                 isOpen={showLoginModal}
                 onClose={() => setShowLoginModal(false)}

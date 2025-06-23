@@ -71,7 +71,7 @@ interface SearchResponse {
 
 const MODELS = [
     'All Models',
-    'gemini-flash-2.5',
+    'gemini-2.5-flash',
     'llama-4-hackclub'
 ];
 
@@ -565,7 +565,7 @@ export default function SearchPage() {
                                                         whileHover={{ scale: 1.02 }}
                                                         whileTap={{ scale: 0.98 }}
                                                         onClick={() => copyShareLink(guide._id)}
-                                                        className="px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center bg-blue-600 text-white hover:bg-blue-700"
+                                                        className="px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center bg-[#242424] text-white hover:bg-[#333333] border border-white/10 hover:border-primary/30  "
                                                     >
                                                         <Copy className="w-4 h-4" />
                                                     </motion.button>

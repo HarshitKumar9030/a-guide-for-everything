@@ -34,8 +34,9 @@ function highlightText(text: string, searchTerms: string[]): string {
 
 interface GuideDocument {
     _id: string;
+    id: string; // UUID field used in URLs
     title: string;
-    preview: string;
+    nutshell?: string; // Use nutshell instead of preview
     content: string;
     model: string;
     author?: {
@@ -51,11 +52,11 @@ interface GuideDocument {
 function calculateRelevanceScore(guide: GuideDocument, searchTerms: string[]): number {
     let score = 0;
     const titleWeight = 3;
-    const previewWeight = 2;
+    const nutshellWeight = 2;
     const contentWeight = 1;
     
     const title = (guide.title || '').toLowerCase();
-    const preview = (guide.preview || '').toLowerCase();
+    const nutshell = (guide.nutshell || '').toLowerCase();
     const content = (guide.content || '').toLowerCase();
     
     searchTerms.forEach(term => {
@@ -65,9 +66,9 @@ function calculateRelevanceScore(guide: GuideDocument, searchTerms: string[]): n
         const titleMatches = (title.match(new RegExp(termLower, 'g')) || []).length;
         score += titleMatches * titleWeight;
         
-        // Preview matches
-        const previewMatches = (preview.match(new RegExp(termLower, 'g')) || []).length;
-        score += previewMatches * previewWeight;
+        // Nutshell matches
+        const nutshellMatches = (nutshell.match(new RegExp(termLower, 'g')) || []).length;
+        score += nutshellMatches * nutshellWeight;
         
         // Content matches (lowest weight)
         const contentMatches = (content.match(new RegExp(termLower, 'g')) || []).length;
@@ -131,12 +132,11 @@ export async function GET(request: NextRequest) {
             const searchRegex = searchTerms.map(term => 
                 new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
             );
-            
-            pipeline.push({
+              pipeline.push({
                 $match: {
                     $or: [
                         { title: { $in: searchRegex } },
-                        { preview: { $in: searchRegex } },
+                        { nutshell: { $in: searchRegex } },
                         { content: { $in: searchRegex } }
                     ]
                 }
@@ -216,15 +216,13 @@ export async function GET(request: NextRequest) {
         
         pipeline.push({ $sort: sortStage });
         
-        // Add pagination
         const skip = (page - 1) * limit;
         pipeline.push({ $skip: skip });
-        pipeline.push({ $limit: limit });
-        
-        pipeline.push({
+        pipeline.push({ $limit: limit });        pipeline.push({
             $project: {
+                id: 1, // Use the UUID field, not _id
                 title: 1,
-                preview: 1,
+                nutshell: 1, 
                 content: 1,
                 model: 1,
                 author: 1,
@@ -235,16 +233,13 @@ export async function GET(request: NextRequest) {
             }
         });
         
-        // Execute the search
         const guides = await db.collection('guides').aggregate(pipeline).toArray();
-          // Calculate relevance scores and add highlighting for client-side sorting
         const results: SearchResult[] = guides.map(guide => {
             const guideDoc = guide as GuideDocument;
-            const relevanceScore = calculateRelevanceScore(guideDoc, searchTerms);
-              return {
-                _id: guideDoc._id.toString(),
+            const relevanceScore = calculateRelevanceScore(guideDoc, searchTerms);            return {
+                _id: guideDoc.id, // Use the UUID field for the _id in response
                 title: guideDoc.title,
-                preview: guideDoc.preview,
+                preview: guideDoc.nutshell || guideDoc.content?.substring(0, 200) + '...' || 'No preview available',
                 content: guideDoc.content,
                 model: guideDoc.model,
                 author: {
@@ -257,11 +252,10 @@ export async function GET(request: NextRequest) {
                 views: guideDoc.views || 0,
                 relevanceScore,
                 highlightedTitle: highlightText(guideDoc.title, searchTerms),
-                highlightedPreview: highlightText(guideDoc.preview, searchTerms)
+                highlightedPreview: highlightText(guideDoc.nutshell || guideDoc.content?.substring(0, 200) + '...' || 'No preview available', searchTerms)
             };
         });
         
-        // Sort by relevance if requested
         if (sortBy === 'relevance') {
             results.sort((a, b) => {
                 if (sortOrder === 'asc') {
