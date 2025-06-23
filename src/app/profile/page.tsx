@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AvatarUpload from '@/components/core/AvatarUpload';
 import ConfirmModal from '@/components/core/ConfirmModal';
+import ErrorModal from '@/components/core/ErrorModal';
 import { getTimeUntilNextExport, formatTimeRemaining } from '@/lib/rate-limit';
 
 export default function ProfilePage() {
@@ -28,11 +29,22 @@ export default function ProfilePage() {
         geminiGuides: number;
         remaining: { llama: number; gemini: number };
         limits: { llamaMax: number; geminiMax: number };
-    } | null>(null);
-
-    // Delete account modal state
+    } | null>(null);    // Delete account modal state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false); useEffect(() => {
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Error modal state
+    const [errorModal, setErrorModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type?: 'error' | 'success' | 'info' | 'warning';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'error'
+    });useEffect(() => {
         if (session?.user) {
             setName(session.user.name || '');
             setEmail(session.user.email || '');
@@ -139,15 +151,19 @@ export default function ProfilePage() {
             }
 
             // Sign out and redirect to home page
-            await signOut({ callbackUrl: '/' });
-        } catch (error) {
+            await signOut({ callbackUrl: '/' });        } catch (error) {
             console.error('Failed to delete account:', error);
-            alert('Failed to delete account. Please try again.');
+            setErrorModal({
+                isOpen: true,
+                title: 'Delete Account Failed',
+                message: 'Failed to delete account. Please try again.',
+                type: 'error'
+            });
         } finally {
             setIsDeleting(false);
             setShowDeleteModal(false);
         }
-    }; const handleExportGuides = async () => {
+    };    const handleExportGuides = async () => {
         try {
             setIsExporting(true);
 
@@ -162,10 +178,33 @@ export default function ProfilePage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to export guides');
+                // Handle rate limit error specifically
+                if (data.error?.includes('cooldown') || data.error?.includes('6 hours')) {
+                    const timeRemaining = data.timeRemaining || 0;
+                    const timeText = formatTimeRemaining(timeRemaining);
+                    setErrorModal({
+                        isOpen: true,
+                        title: 'Export Cooldown Active',
+                        message: `You can export guides once every 6 hours.\n\nNext export available in: ${timeText}`,
+                        type: 'warning'
+                    });
+                } else {
+                    setErrorModal({
+                        isOpen: true,
+                        title: 'Export Failed',
+                        message: data.error || 'Failed to export guides. Please try again later.',
+                        type: 'error'
+                    });
+                }
+                return;
             }
 
-            alert(`Success! Your guides export (${data.guideCount} guides) has been sent to your email.`);
+            setErrorModal({
+                isOpen: true,
+                title: 'Export Successful',
+                message: `Success! Your guides export (${data.guideCount} guides) has been sent to your email.`,
+                type: 'success'
+            });
         } catch (error) {
             console.error('Export error:', error);
             // Fallback: try to download directly
@@ -188,13 +227,40 @@ export default function ProfilePage() {
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
-                    alert('Export downloaded successfully!');
+                    setErrorModal({
+                        isOpen: true,
+                        title: 'Export Downloaded',
+                        message: 'Export downloaded successfully!',
+                        type: 'success'
+                    });
                 } else {
-                    throw new Error('Export failed');
+                    const fallbackData = await fallbackResponse.json();
+                    if (fallbackData.error?.includes('cooldown') || fallbackData.error?.includes('6 hours')) {
+                        const timeRemaining = fallbackData.timeRemaining || 0;
+                        const timeText = formatTimeRemaining(timeRemaining);
+                        setErrorModal({
+                            isOpen: true,
+                            title: 'Export Cooldown Active',
+                            message: `You can export guides once every 6 hours.\n\nNext export available in: ${timeText}`,
+                            type: 'warning'
+                        });
+                    } else {
+                        setErrorModal({
+                            isOpen: true,
+                            title: 'Export Failed',
+                            message: fallbackData.error || 'Export failed. Please try again later.',
+                            type: 'error'
+                        });
+                    }
                 }
             } catch (fallbackError) {
                 console.error('Fallback export error:', fallbackError);
-                alert('Failed to export guides. Please try again later.');
+                setErrorModal({
+                    isOpen: true,
+                    title: 'Export Failed',
+                    message: 'Failed to export guides. Please try again later.',
+                    type: 'error'
+                });
             }
         } finally {
             setIsExporting(false);
@@ -245,9 +311,7 @@ export default function ProfilePage() {
                             <p className="text-white text-2xl">
                                 Your Login Provider is <span className="text-primary">{provider}</span>
                             </p>
-                        </div>
-
-                        {userLimits && (
+                        </div>                        {userLimits && (
                             <div className="pt-8">
                                 <h3 className="text-white text-2xl mb-4">Guide Usage</h3>
                                 <div className="bg-[#2A2A2A] border border-[#323232] rounded-2xl p-4 space-y-3">
@@ -282,13 +346,46 @@ export default function ProfilePage() {
                             </div>
                         )}
 
-                        <div className="flex flex-col md:flex-row gap-4 pt-8">
-                            <button
+                        {/* Export Cooldown Status */}
+                        {!canExport && (
+                            <div className="pt-6">
+                                <div className="bg-[#2A2A2A] border border-orange-500/30 rounded-2xl p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+                                        <div>
+                                            <h4 className="text-orange-400 font-medium">Export Cooldown Active</h4>
+                                            <p className="text-gray-300 text-sm">
+                                                Next export available in {formatTimeRemaining(exportCooldown)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col md:flex-row gap-4 pt-8">                            <button
                                 onClick={handleExportGuides}
                                 disabled={isExporting || !canExport}
-                                className="h-[66px] py-2 md:py-0 bg-[#2A2A2A] hover:bg-[#323232] text-white text-lg font-medium rounded-[26px] border border-[#3a3a3a] px-5 transition-colors flex-1 min-w-[160px] disabled:opacity-70 disabled:cursor-not-allowed"
+                                className={`h-[66px] py-2 md:py-0 text-lg font-medium rounded-[26px] px-5 transition-colors flex-1 min-w-[160px] disabled:cursor-not-allowed ${
+                                    !canExport 
+                                        ? 'bg-orange-900/50 hover:bg-orange-900/50 text-orange-300 border border-orange-500/30' 
+                                        : 'bg-[#2A2A2A] hover:bg-[#323232] text-white border border-[#3a3a3a] disabled:opacity-70'
+                                }`}
+                                title={!canExport ? `Export available in ${formatTimeRemaining(exportCooldown)}` : ''}
                             >
-                                {isExporting ? 'Exporting...' : !canExport ? `Export in ${formatTimeRemaining(exportCooldown)}` : 'Export Guides'}
+                                {isExporting ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                        Exporting...
+                                    </div>
+                                ) : !canExport ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                                        Export in {formatTimeRemaining(exportCooldown)}
+                                    </div>
+                                ) : (
+                                    'Export Guides'
+                                )}
                             </button>
 
                             <button
@@ -388,8 +485,7 @@ export default function ProfilePage() {
                         </form>            </div>
                 </div>
 
-                {/* Delete Account Confirmation Modal */}
-                <ConfirmModal
+                {/* Delete Account Confirmation Modal */}                <ConfirmModal
                     isOpen={showDeleteModal}
                     onClose={() => setShowDeleteModal(false)}
                     onConfirm={confirmDeleteAccount}
@@ -399,6 +495,14 @@ export default function ProfilePage() {
                     cancelText="Cancel"
                     isDangerous={true}
                     isLoading={isDeleting}
+                />
+
+                <ErrorModal
+                    isOpen={errorModal.isOpen}
+                    onClose={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+                    title={errorModal.title}
+                    message={errorModal.message}
+                    type={errorModal.type}
                 />
             </div>
             </div>
