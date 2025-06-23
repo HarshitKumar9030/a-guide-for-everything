@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AvatarUpload from '@/components/core/AvatarUpload';
 import ConfirmModal from '@/components/core/ConfirmModal';
+import { getTimeUntilNextExport, formatTimeRemaining } from '@/lib/rate-limit';
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
@@ -17,27 +18,55 @@ export default function ProfilePage() {
 
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');    const [passwordError, setPasswordError] = useState(''); 
+    const [confirmPassword, setConfirmPassword] = useState(''); const [passwordError, setPasswordError] = useState('');
     const [passwordSuccess, setPasswordSuccess] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isExporting, setIsExporting] = useState(false);
-    
+    const [isExporting, setIsExporting] = useState(false); const [exportCooldown, setExportCooldown] = useState<number>(0);
+    const [canExport, setCanExport] = useState<boolean>(true);
+    const [userLimits, setUserLimits] = useState<{
+        llamaGuides: number;
+        geminiGuides: number;
+        remaining: { llama: number; gemini: number };
+        limits: { llamaMax: number; geminiMax: number };
+    } | null>(null);
+
     // Delete account modal state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);useEffect(() => {
+    const [isDeleting, setIsDeleting] = useState(false); useEffect(() => {
         if (session?.user) {
             setName(session.user.name || '');
             setEmail(session.user.email || '');
             setAvatar(session.user.image || null);
             setProvider(session.user.provider || 'Email');
         }
-    }, [session]);
-
-    useEffect(() => {
+    }, [session]); useEffect(() => {
         if (status === 'unauthenticated') {
             router.push('/auth/signin');
         }
-    }, [status, router]);
+    }, [status, router]); useEffect(() => {
+        // Check export cooldown and fetch user limits on mount and update every minute
+        const checkCooldownAndLimits = async () => {
+            if (!session?.user?.email) return;
+
+            try {
+                const response = await fetch('/api/user/limits');
+                if (response.ok) {
+                    const data = await response.json();
+                    const timeRemaining = getTimeUntilNextExport(data.lastExport);
+                    setExportCooldown(timeRemaining);
+                    setCanExport(timeRemaining === 0);
+                    setUserLimits(data);
+                }
+            } catch (error) {
+                console.error('Error checking export cooldown and limits:', error);
+            }
+        };
+
+        checkCooldownAndLimits();
+        const interval = setInterval(checkCooldownAndLimits, 60000); // Check every minute
+
+        return () => clearInterval(interval);
+    }, [session?.user?.email]);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,13 +117,13 @@ export default function ProfilePage() {
         setAvatar(newAvatarUrl); // Can now be null
         // The session will be updated automatically via NextAuth callbacks
         window.location.reload(); // Refresh to get updated session
-    };    const handleDeleteAccount = async () => {
+    }; const handleDeleteAccount = async () => {
         setShowDeleteModal(true);
     };
 
     const confirmDeleteAccount = async () => {
         setIsDeleting(true);
-        
+
         try {
             const response = await fetch('/api/auth/delete-account', {
                 method: 'DELETE',
@@ -118,10 +147,10 @@ export default function ProfilePage() {
             setIsDeleting(false);
             setShowDeleteModal(false);
         }
-    };    const handleExportGuides = async () => {
+    }; const handleExportGuides = async () => {
         try {
             setIsExporting(true);
-            
+
             const response = await fetch('/api/export/guides', {
                 method: 'POST',
                 headers: {
@@ -212,16 +241,54 @@ export default function ProfilePage() {
                                 readOnly
                                 className="w-full h-[72px] px-4 bg-[#2A2A2A] text-white rounded-2xl border border-[#323232] focus:outline-none focus:ring-2 focus:ring-primary cursor-not-allowed"
                             />
-                        </div>              <div className="pt-8">
+                        </div>                        <div className="pt-8">
                             <p className="text-white text-2xl">
                                 Your Login Provider is <span className="text-primary">{provider}</span>
                             </p>
-                        </div>                        <div className="flex flex-col md:flex-row gap-4 pt-8">                            <button
+                        </div>
+
+                        {userLimits && (
+                            <div className="pt-8">
+                                <h3 className="text-white text-2xl mb-4">Guide Usage</h3>
+                                <div className="bg-[#2A2A2A] border border-[#323232] rounded-2xl p-4 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-300">Llama Guides:</span>
+                                        <span className="text-white font-medium">
+                                            {userLimits.llamaGuides}/{userLimits.limits.llamaMax}
+                                            <span className="text-gray-400 ml-2">({userLimits.remaining.llama} left)</span>
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-background/90 rounded-full h-2">
+                                        <div
+                                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                                            style={{ width: `${(userLimits.llamaGuides / userLimits.limits.llamaMax) * 100}%` }}
+                                        ></div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-300">Gemini Guides:</span>
+                                        <span className="text-white font-medium">
+                                            {userLimits.geminiGuides}/{userLimits.limits.geminiMax}
+                                            <span className="text-gray-400 ml-2">({userLimits.remaining.gemini} left)</span>
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-background/90 rounded-full h-2">
+                                        <div
+                                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                            style={{ width: `${(userLimits.geminiGuides / userLimits.limits.geminiMax) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col md:flex-row gap-4 pt-8">
+                            <button
                                 onClick={handleExportGuides}
-                                disabled={isExporting}
+                                disabled={isExporting || !canExport}
                                 className="h-[66px] py-2 md:py-0 bg-[#2A2A2A] hover:bg-[#323232] text-white text-lg font-medium rounded-[26px] border border-[#3a3a3a] px-5 transition-colors flex-1 min-w-[160px] disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                {isExporting ? 'Exporting...' : 'Export Guides'}
+                                {isExporting ? 'Exporting...' : !canExport ? `Export in ${formatTimeRemaining(exportCooldown)}` : 'Export Guides'}
                             </button>
 
                             <button
@@ -231,7 +298,8 @@ export default function ProfilePage() {
                                 Delete Account
                             </button>
                         </div>
-                    </div>          </div>
+                    </div>          
+                    </div>
 
                 <div className="hidden lg:block absolute top-8 bottom-8 left-1/2 transform -translate-x-0.5 border-l border-dashed border-[#323232]"></div>                <div className="p-8 md:p-12 lg:p-16 border-t border-dashed lg:border-t-0 border-[#323232]">
                     <div className="flex flex-col items-center mb-16">
@@ -318,21 +386,21 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         </form>            </div>
-            </div>
+                </div>
 
-            {/* Delete Account Confirmation Modal */}
-            <ConfirmModal
-                isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                onConfirm={confirmDeleteAccount}
-                title="Delete Account"
-                message="Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your data including saved guides and profile information."
-                confirmText="Delete Account"
-                cancelText="Cancel"
-                isDangerous={true}
-                isLoading={isDeleting}
-            />
-        </div>
+                {/* Delete Account Confirmation Modal */}
+                <ConfirmModal
+                    isOpen={showDeleteModal}
+                    onClose={() => setShowDeleteModal(false)}
+                    onConfirm={confirmDeleteAccount}
+                    title="Delete Account"
+                    message="Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your data including saved guides and profile information."
+                    confirmText="Delete Account"
+                    cancelText="Cancel"
+                    isDangerous={true}
+                    isLoading={isDeleting}
+                />
+            </div>
             </div>
         </div>
     );

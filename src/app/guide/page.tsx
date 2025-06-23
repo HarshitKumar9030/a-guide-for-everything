@@ -2,29 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Save, Download, Share2, ArrowLeft, ZoomIn, ZoomOut, List, BookOpen, Copy, ExternalLink } from 'lucide-react';
+import { Save, Download, Share2, ArrowLeft, ZoomIn, ZoomOut, List, BookOpen, Copy, ExternalLink, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import { GuideStorage, GuideData } from '@/lib/guide-storage';
 import { useGuide } from '@/contexts/GuideContext';
+import PleaseLogin from '@/components/core/PleaseLogin';
 import '@/styles/guide.css';
 
 const cleanMarkdownContent = (content: string) => {
-    // Remove the main title (first h1)
     let cleaned = content.replace(/^#\s+.+$/m, '');
     
-    // Remove "In a Nutshell" section
     cleaned = cleaned.replace(/##\s*In a Nutshell\s*\n[\s\S]*?(?=\n#|$)/i, '');
     
-    // Remove leading whitespace and empty lines
     cleaned = cleaned.replace(/^\s*\n+/, '').trim();
     
     return cleaned;
 };
 
 const extractHeadings = (content: string) => {
-    // Clean the content first
     const cleanedContent = cleanMarkdownContent(content);
 
     const headingRegex = /^(#{1,6})\s+(.+)$/gm;
@@ -68,10 +65,11 @@ export default function GuidePage() {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [shareableLink, setShareableLink] = useState<string>('');
     const [showShareModal, setShowShareModal] = useState(false);
-    const [zoomLevel, setZoomLevel] = useState(100);
-    const [showTOC, setShowTOC] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(100);    const [showTOC, setShowTOC] = useState(false);
     const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
     const [nutshellSummary, setNutshellSummary] = useState<string>('');
+    const [isSaved, setIsSaved] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
     useEffect(() => {
         const data = GuideStorage.getGuide();
         if (data) {
@@ -102,17 +100,13 @@ export default function GuidePage() {
     };    const handleSave = async () => {
         if (!guideData) return;
 
-        // Check if user is authenticated
         if (!session) {
-            setSaveStatus('error');
-            console.error('User must be logged in to save guides');
-            setTimeout(() => setSaveStatus('idle'), 3000);
+            setShowLoginModal(true);
             return;
         }
 
         setIsSaving(true);
         try {
-            // Extract title from the guide content or use the original prompt
             const title = guideData.guide.match(/^#\s+(.+)$/m)?.[1] || guideData.originalPrompt;
             
             const response = await fetch('/api/guides', {
@@ -135,7 +129,7 @@ export default function GuidePage() {
 
             if (response.ok && result.success) {
                 setSaveStatus('success');
-                // Store the shareable link and show modal
+                setIsSaved(true);
                 if (result.shareUrl) {
                     setShareableLink(result.shareUrl);
                     setShowShareModal(true);
@@ -182,22 +176,30 @@ export default function GuidePage() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    };
-    const handleShare = async () => {
+    };    const handleShare = async () => {
         if (!guideData) return;
+
+        // Check if guide is saved first
+        if (!isSaved || !shareableLink) {
+            return; // Button should be disabled, but just in case
+        }
 
         try {
             if (typeof navigator !== 'undefined' && 'share' in navigator) {
                 await navigator.share({
                     title: `Guide: ${guideData.originalPrompt}`,
-                    text: guideData.guide.substring(0, 200) + '...',
-                    url: window.location.href
+                    text: nutshellSummary || guideData.guide.substring(0, 200) + '...',
+                    url: shareableLink
                 });
+            } else {
+                // Fallback: copy link to clipboard
+                await copyToClipboard(shareableLink);
+                alert('Share link copied to clipboard!');
             }
         } catch (error) {
             console.error('Failed to share:', error);
         }
-    }; if (!guideData) {
+    };if (!guideData) {
         return null; // Let the GuideLoading screen handle the loading state
     }
 
@@ -257,34 +259,46 @@ export default function GuidePage() {
                     <Download className="w-4 h-4 flex-shrink-0" />
                     <span className="hidden xs:inline sm:inline whitespace-nowrap">Download</span>
                     <span className="xs:hidden sm:hidden">Download</span>
-                </motion.button>
-
-                {typeof window !== 'undefined' && 'share' in navigator && (
+                </motion.button>                {typeof window !== 'undefined' && 'share' in navigator && (
                     <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleShare}
-                        className="mobile-fab flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-[#1E1E1E] hover:bg-[#333] border border-white/10 transition-colors text-xs sm:text-sm shadow-lg backdrop-blur-sm touch-manipulation"
+                        whileHover={{ scale: isSaved ? 1.05 : 1 }}
+                        whileTap={{ scale: isSaved ? 0.95 : 1 }}
+                        onClick={isSaved ? handleShare : undefined}
+                        disabled={!isSaved}
+                        className={`mobile-fab flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-colors text-xs sm:text-sm shadow-lg backdrop-blur-sm touch-manipulation ${
+                            isSaved 
+                                ? 'bg-[#1E1E1E] hover:bg-[#333] border border-white/10' 
+                                : 'bg-gray-600 text-gray-400 border border-gray-500 cursor-not-allowed'
+                        }`}
+                        title={!isSaved ? 'Save guide first to share' : 'Share guide'}
                     >
                         <Share2 className="w-4 h-4 flex-shrink-0" />
-                        <span className="hidden xs:inline sm:inline whitespace-nowrap">Share</span>
-                        <span className="xs:hidden sm:hidden">Share</span>
+                        <span className="hidden xs:inline sm:inline whitespace-nowrap">
+                            {isSaved ? 'Share' : 'Save to Share'}
+                        </span>
+                        <span className="xs:hidden sm:hidden">
+                            {isSaved ? 'Share' : 'Save'}
+                        </span>
                     </motion.button>
-                )}
-
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleSave}
+                )}                <motion.button
+                    whileHover={{ scale: !session ? 1 : 1.05 }}
+                    whileTap={{ scale: !session ? 1 : 0.95 }}
+                    onClick={!session ? () => setShowLoginModal(true) : handleSave}
                     disabled={isSaving}
-                    className={`mobile-fab flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-colors text-xs sm:text-sm font-medium shadow-lg backdrop-blur-sm touch-manipulation ${saveStatus === 'success'
-                        ? 'bg-green-600 text-white border border-green-500'
-                        : saveStatus === 'error'
-                            ? 'bg-red-600 text-white border border-red-500'
-                            : 'bg-primary text-black hover:bg-primary/80 border border-primary/30'
+                    className={`mobile-fab flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-xl transition-colors text-xs sm:text-sm font-medium shadow-lg backdrop-blur-sm touch-manipulation ${
+                        !session 
+                            ? 'bg-gray-600 text-gray-400 border border-gray-500 cursor-pointer'
+                            : saveStatus === 'success'
+                                ? 'bg-green-600 text-white border border-green-500'
+                                : saveStatus === 'error'
+                                    ? 'bg-red-600 text-white border border-red-500'
+                                    : 'bg-primary text-black hover:bg-primary/80 border border-primary/30'
                         }`}
+                    title={!session ? 'Sign in to save guides' : ''}
                 >
-                    {isSaving ? (
+                    {!session ? (
+                        <Save className="w-4 h-4 flex-shrink-0" />
+                    ) : isSaving ? (
                         <motion.div
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -294,10 +308,16 @@ export default function GuidePage() {
                         <Save className="w-4 h-4 flex-shrink-0" />
                     )}
                     <span className="hidden xs:inline sm:inline whitespace-nowrap">
-                        {saveStatus === 'success' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save'}
+                        {!session 
+                            ? 'Sign in to Save' 
+                            : saveStatus === 'success' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save'
+                        }
                     </span>
                     <span className="xs:hidden sm:hidden">
-                        {saveStatus === 'success' ? 'OK' : saveStatus === 'error' ? 'Err' : 'Save'}
+                        {!session 
+                            ? 'Sign in' 
+                            : saveStatus === 'success' ? 'OK' : saveStatus === 'error' ? 'Err' : 'Save'
+                        }
                     </span>
                 </motion.button>
             </div>
@@ -431,7 +451,7 @@ export default function GuidePage() {
 
                             <div className="flex items-center gap-2">
                                 <span className="font-medium text-primary">Created by:</span>
-                                <span className="text-white">{guideData.user}</span>
+                                <span className="text-white">{guideData.user || 'Guest'}</span>
                             </div>
 
                             {guideData.tokens && (
@@ -585,11 +605,22 @@ export default function GuidePage() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-                        >
-                            <div className="bg-[#1E1E1E] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-                                <h3 className="text-xl font-semibold text-white mb-4">Guide Saved Successfully!</h3>
+                        >                            <div className="bg-[#1E1E1E] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-green-600/20 rounded-xl border border-green-500/30">
+                                        <Save className="w-5 h-5 text-green-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-semibold text-white">Guide Saved Successfully!</h3>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Lock className="w-3 h-3 text-orange-400" />
+                                            <span className="text-orange-400 text-xs font-medium">Private Guide</span>
+                                        </div>
+                                    </div>
+                                </div>
                                 <p className="text-white/70 mb-4">
-                                    Your guide has been saved and can be shared using the link below:
+                                    Your guide has been saved as private and can be shared using the link below. 
+                                    Visit your <span className="text-primary font-medium">Saved Guides</span> page to make it public.
                                 </p>
                                 
                                 <div className="bg-black/30 border border-white/10 rounded-lg p-3 mb-4">
@@ -610,9 +641,7 @@ export default function GuidePage() {
                                             <Copy className="w-4 h-4" />
                                         </motion.button>
                                     </div>
-                                </div>
-
-                                <div className="flex gap-3">
+                                </div>                                <div className="flex gap-3">
                                     <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -620,22 +649,36 @@ export default function GuidePage() {
                                         className="flex-1 bg-primary text-black py-2.5 rounded-xl font-medium hover:bg-primary/80 transition-colors flex items-center justify-center gap-2"
                                     >
                                         <ExternalLink className="w-4 h-4" />
-                                        Open Guide
+                                        View Guide
+                                    </motion.button>
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => router.push('/saved-guides')}
+                                        className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <BookOpen className="w-4 h-4" />
+                                        Manage
                                     </motion.button>
                                     <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={handleCloseShareModal}
-                                        className="flex-1 bg-white/10 text-white py-2.5 rounded-xl font-medium hover:bg-white/20 transition-colors"
+                                        className="bg-white/10 text-white py-2.5 px-4 rounded-xl font-medium hover:bg-white/20 transition-colors"
                                     >
                                         Close
                                     </motion.button>
                                 </div>
                             </div>
-                        </motion.div>
-                    </>
+                        </motion.div>                    </>
                 )}
             </AnimatePresence>
+
+            {/* Please Login Modal */}
+            <PleaseLogin
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+            />
             </main>
         </motion.div>
     );

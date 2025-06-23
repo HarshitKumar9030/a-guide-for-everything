@@ -16,10 +16,8 @@ export default function Shimmer({
 }: ShimmerProps) {
     const [isShimmering, setIsShimmering] = useState(false);    useEffect(() => {
         if (isActive) {
-            console.log('Shimmer component activated, duration:', duration);
             setIsShimmering(true);
             const timer = setTimeout(() => {
-                console.log('Shimmer component deactivated');
                 setIsShimmering(false);
             }, duration);
 
@@ -27,7 +25,6 @@ export default function Shimmer({
         }
     }, [isActive, duration]);
 
-    console.log('Shimmer render - isActive:', isActive, 'isShimmering:', isShimmering);
 
     return (
         <div className={`relative overflow-hidden rounded-xl ${className}`}>
@@ -53,10 +50,8 @@ export function useShimmer(triggerValue?: unknown) {
 
     useEffect(() => {        // Always trigger on any change, no skipping
         if (triggerValue !== undefined && triggerValue !== 0) {
-            console.log('Shimmer FORCE triggered by change:', triggerValue);
             setShimmerActive(true);
             const timer = setTimeout(() => {
-                console.log('Shimmer hook deactivated');
                 setShimmerActive(false);
             }, 2200); // Match CSS animation duration + buffer
 

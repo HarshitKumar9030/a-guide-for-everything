@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getGuidesCollection } from '@/lib/guides-db';
+import { getUserLimits, updateLastExport } from '@/lib/user-limits';
+import { checkExportCooldown, getTimeUntilNextExport, formatTimeRemaining } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +13,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
+      );
+    }
+
+    // Check export rate limit
+    const userLimits = await getUserLimits(session.user.email!);
+    
+    if (!checkExportCooldown(userLimits.lastExport)) {
+      const timeRemaining = getTimeUntilNextExport(userLimits.lastExport);
+      const formattedTime = formatTimeRemaining(timeRemaining);
+      
+      return NextResponse.json(
+        { 
+          error: `You can export guides once every 6 hours. Please try again in ${formattedTime}.`,
+          timeRemaining,
+          canExportAt: userLimits.lastExport + (6 * 60 * 60 * 1000)
+        },
+        { status: 429 }
       );
     }
 
@@ -52,12 +71,13 @@ export async function POST(req: NextRequest) {
       guide.createdAt ? new Date(guide.createdAt).toISOString().split('T')[0] : '',
       guide.updatedAt ? new Date(guide.updatedAt).toISOString().split('T')[0] : '',
       `"https://agfe.tech/guide/${guide.id}"`
-    ]);
-
-    const csvContent = [
+    ]);    const csvContent = [
       csvHeaders.join(','),
       ...csvRows.map(row => row.join(','))
     ].join('\n');
+
+    // Update last export time before sending response
+    await updateLastExport(session.user.email!);
 
     if (sendEmail) {
       try {

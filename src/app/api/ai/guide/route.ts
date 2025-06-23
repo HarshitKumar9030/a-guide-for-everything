@@ -3,22 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { geminiCompletion } from '@/lib/ai/gemini';
 import { aiCompletion } from '@/lib/ai/hackclub';
+import { getUserLimits, incrementGuideCount } from '@/lib/user-limits';
+import { getGuestLimits, incrementGuestGuideCount, getClientIP } from '@/lib/guest-limits';
+import { checkUserGuideLimit, checkGuestGuideLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
-    // Check if user is authenticated
     const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { 
-          error: 'Authentication required',
-          message: 'You must be logged in to generate guides'
-        },
-        { status: 401 }
-      );
-    }
-
     const { prompt, model } = await req.json();
 
     if (!prompt || typeof prompt !== 'string') {
@@ -35,13 +26,102 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!model || !['gemini-flash-2.5', 'llama-4-hackclub'].includes(model)) {
+    let normalizedModel = '';
+    if (model === 'gemini-flash-2.5' || model === 'gemini') {
+      normalizedModel = 'gemini';
+    } else if (model === 'llama-4-hackclub' || model === 'llama') {
+      normalizedModel = 'llama';
+    } else {
       return NextResponse.json(
-        { error: 'Invalid model specified' },
+        { error: 'Invalid model specified. Use "gemini" or "llama".' },
         { status: 400 }
       );
-    }    // Enhanced prompt for comprehensive guide generation
-    const enhancedPrompt = `You are an expert guide creator. Create a comprehensive, detailed guide for the following request: "${prompt}"
+    }
+
+    if (session?.user?.email) {
+      const userLimits = await getUserLimits(session.user.email);
+      
+      if (!checkUserGuideLimit(normalizedModel, {
+        llamaGuides: userLimits.llamaGuides,
+        geminiGuides: userLimits.geminiGuides,
+        lastExport: userLimits.lastExport
+      })) {
+        const remaining = normalizedModel === 'llama' 
+          ? RATE_LIMITS.USER_GEMINI_LIMIT - userLimits.geminiGuides
+          : RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides;
+        
+        return NextResponse.json(
+          { 
+            error: `You have reached your ${normalizedModel} guide limit. You have ${remaining} guides remaining for ${normalizedModel === 'llama' ? 'Gemini' : 'Llama'}.` 
+          },
+          { status: 429 }
+        );
+      }
+
+      const result = await generateGuide(prompt, normalizedModel);
+      
+      await incrementGuideCount(session.user.email, normalizedModel);
+
+      return NextResponse.json({
+        ...result,
+        user: session.user.email,
+        originalPrompt: prompt,
+        remaining: {
+          llama: RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides - (normalizedModel === 'llama' ? 1 : 0),
+          gemini: RATE_LIMITS.USER_GEMINI_LIMIT - userLimits.geminiGuides - (normalizedModel === 'gemini' ? 1 : 0)
+        }
+      });
+
+    } else {
+      if (normalizedModel !== 'llama') {
+        return NextResponse.json(
+          { error: 'Guest users can only use the Llama model. Please sign in to access Gemini.' },
+          { status: 401 }
+        );
+      }
+
+      const clientIP = getClientIP(req);
+      const guestLimits = await getGuestLimits(clientIP);
+      
+      if (!checkGuestGuideLimit({
+        guides: guestLimits.guides
+      })) {
+        return NextResponse.json(
+          { 
+            error: `You have reached your guide limit (${RATE_LIMITS.GUEST_GUIDE_LIMIT} guides total). Please sign in to get more guides.`
+          },
+          { status: 429 }
+        );
+      }
+
+      const result = await generateGuide(prompt, normalizedModel);
+      
+      await incrementGuestGuideCount(clientIP);
+
+      return NextResponse.json({
+        ...result,
+        originalPrompt: prompt,
+        remaining: {
+          guides: RATE_LIMITS.GUEST_GUIDE_LIMIT - guestLimits.guides - 1
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Guide Generation API Error:', error);
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to generate guide',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+async function generateGuide(prompt: string, model: string) {
+const enhancedPrompt = `You are an expert guide creator. Create a comprehensive, detailed guide for the following request: "${prompt}"
 
 Please format your response in markdown with the following structure:
 - Start with a brief "In a Nutshell" summary (2-3 sentences explaining what this guide covers)
@@ -63,42 +143,20 @@ The guide should be engaging, informative, and tailored specifically to help wit
 
 Generate a complete guide that someone could actually use to achieve their goal.`;
 
-    let result;
-    let response;
-
-    if (model === 'gemini-flash-2.5') {
-      result = await geminiCompletion(enhancedPrompt);
-      response = {
-        guide: result.content,
-        model: result.model,
-        timestamp: result.timestamp,
-        user: session.user.email,
-        originalPrompt: prompt
-      };
-    } else {
-      // HackClub model
-      result = await aiCompletion(enhancedPrompt);
-      const responseText = result.choices?.[0]?.message?.content || 'No response received';
-      response = {
-        guide: responseText,
-        model: 'llama-4-hackclub',
-        timestamp: new Date().toISOString(),
-        user: session.user.email,
-        originalPrompt: prompt
-      };
-    }
-
-    return NextResponse.json(response);
-
-  } catch (error) {
-    console.error('Guide Generation API Error:', error);
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to generate guide',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+  if (model === 'gemini') {
+    const result = await geminiCompletion(enhancedPrompt);
+    return {
+      guide: result.content,
+      model: result.model,
+      timestamp: result.timestamp
+    };
+  } else {
+    const result = await aiCompletion(enhancedPrompt);
+    const responseText = result.choices?.[0]?.message?.content || 'No response received';
+    return {
+      guide: responseText,
+      model: 'llama-4-hackclub',
+      timestamp: new Date().toISOString()
+    };
   }
 }
