@@ -51,12 +51,16 @@ export default function SavedGuidesPage() {
         }
 
         fetchGuides();
-    }, [session, status, router]);
-
-    const fetchGuides = async () => {
+    }, [session, status, router]);    const fetchGuides = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/guides');
+            
+            // Add minimum loading time to prevent flashing
+            const [response] = await Promise.all([
+                fetch('/api/guides'),
+                new Promise(resolve => setTimeout(resolve, 800)) // Minimum 800ms loading
+            ]);
+            
             const data = await response.json();
 
             if (response.ok) {
@@ -152,18 +156,71 @@ export default function SavedGuidesPage() {
                 message: 'Failed to copy the link to clipboard. Please try again.',
                 type: 'error'
             });
-        }
-    }; if (status === 'loading') {
-        return null;
+        }    }; if (status === 'loading') {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
+                <div className="w-full max-w-7xl bg-[#1E1E1E] rounded-[72px] overflow-hidden shadow-xl">
+                    <div className="p-8 md:p-12 lg:p-16">
+                        <div className="text-center py-20">
+                            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                            <h2 className="text-2xl font-bold text-white mb-2">Loading...</h2>
+                            <p className="text-white/60">Please wait while we check your authentication.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (!session) {
         router.push('/auth/signin');
-        return null;
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
+                <div className="w-full max-w-7xl bg-[#1E1E1E] rounded-[72px] overflow-hidden shadow-xl">
+                    <div className="p-8 md:p-12 lg:p-16">
+                        <div className="text-center py-20">
+                            <h2 className="text-2xl font-bold text-white mb-2">Redirecting...</h2>
+                            <p className="text-white/60">Taking you to the sign-in page.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (loading) {
-        return null;
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
+                <div className="w-full max-w-7xl bg-[#1E1E1E] rounded-[72px] overflow-hidden shadow-xl">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="p-8 md:p-12 lg:p-16"
+                    >
+                        <div className="mb-12">
+                            <h1 className="text-white font-just-another-hand text-[96px] md:text-[128px] leading-none mb-4">
+                                Saved Guides
+                            </h1>
+                            <p className="text-white/60 text-xl max-w-2xl">
+                                Loading your saved guides...
+                            </p>
+                        </div>
+
+                        <div className="text-center py-20">
+                            <div className="relative mb-8">
+                                <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl w-32 h-32 mx-auto"></div>
+                                <div className="w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto relative"></div>
+                            </div>
+                            <h2 className="text-3xl font-bold text-white mb-4">Loading Your Guides</h2>
+                            <p className="text-white/60 text-lg max-w-md mx-auto">
+                                Fetching your saved guides. This should only take a moment...
+                            </p>
+                        </div>
+                    </motion.div>
+                </div>
+            </div>
+        );
     } return (
         <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
             <div className="w-full max-w-7xl bg-[#1E1E1E] rounded-[72px] overflow-hidden shadow-xl">
