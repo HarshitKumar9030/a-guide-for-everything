@@ -14,9 +14,13 @@ import {
     User,
     Globe,
     Lock,
-    BarChart3
+    BarChart3,
+    ArrowLeft,
+    Copy,
+    Plus
 } from 'lucide-react';
 import { SavedGuide } from '@/lib/guides-db';
+import ErrorModal from '@/components/core/ErrorModal';
 
 export default function SavedGuidesPage() {
     const { data: session, status } = useSession();
@@ -24,6 +28,19 @@ export default function SavedGuidesPage() {
     const [guides, setGuides] = useState<SavedGuide[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
+
+    // Error modal state
+    const [errorModal, setErrorModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type?: 'error' | 'success' | 'info' | 'warning';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'error'
+    });
 
     useEffect(() => {
         if (status === 'loading') return;
@@ -107,33 +124,40 @@ export default function SavedGuidesPage() {
 
     const openGuide = (guideId: string) => {
         router.push(`/guide/${guideId}`);
-    };
-
-    const copyShareLink = async (guideId: string, isPublic: boolean) => {
+    };    const copyShareLink = async (guideId: string, isPublic: boolean) => {
         if (!isPublic) {
-            alert('Guide must be public to be shared. Please make it public first.');
+            setErrorModal({
+                isOpen: true,
+                title: 'Guide Not Public',
+                message: 'This guide must be public before it can be shared. Please make it public first and try again.',
+                type: 'warning'
+            });
             return;
         }
 
         const shareUrl = `${window.location.origin}/guide/${guideId}`;
         try {
             await navigator.clipboard.writeText(shareUrl);
-            console.log('Share link copied to clipboard!');
+            setErrorModal({
+                isOpen: true,
+                title: 'Link Copied',
+                message: 'Share link has been copied to your clipboard!',
+                type: 'success'
+            });
         } catch (error) {
             console.error('Failed to copy to clipboard:', error);
+            setErrorModal({
+                isOpen: true,
+                title: 'Copy Failed',
+                message: 'Failed to copy the link to clipboard. Please try again.',
+                type: 'error'
+            });
         }
-    };
-
-    if (status === 'loading' || loading) {
-        return (
-            <div className="min-h-screen bg-[#272727] text-white flex items-center justify-center">
+    };    if (status === 'loading' || loading) {
+        return (            <div className="min-h-screen bg-[#141414] flex items-center justify-center">
                 <div className="text-center">
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"
-                    />
-                    <p className="text-white/70">Loading your guides...</p>
+                    <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-white/70 text-lg">Loading your guides...</p>
                 </div>
             </div>
         );
@@ -144,173 +168,202 @@ export default function SavedGuidesPage() {
     }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="min-h-screen bg-[#272727] text-white"
-        >
-            <main className="container mx-auto px-4 py-8 max-w-6xl">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">Your Saved Guides</h1>
-                    <p className="text-white/70">
-                        Manage your saved guides, toggle privacy settings, and share with others.
-                    </p>
-                </div>
-
-                {error && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-red-600/20 border border-red-600/50 rounded-xl p-4 mb-6"
-                    >
-                        <p className="text-red-300">{error}</p>
-                    </motion.div>
-                )}
-
-                {guides.length === 0 ? (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="text-center py-16"
-                    >
-                        <BookOpen className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                        <h2 className="text-xl font-semibold text-white/80 mb-2">No guides saved yet</h2>
-                        <p className="text-white/60 mb-6">
-                            Create and save your first guide to see it here.
-                        </p>
+        <div className="min-h-screen bg-[#141414] py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
+            <div className="w-full max-w-7xl bg-[#1E1E1E] rounded-[72px] overflow-hidden shadow-xl">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    className="p-8 md:p-12 lg:p-16"
+                >
+                    <div className="mb-12">
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => router.push('/')}
-                            className="bg-primary text-black px-6 py-3 rounded-xl font-medium hover:bg-primary/80 transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors mb-8"
                         >
-                            Create Your First Guide
+                            <ArrowLeft className="w-4 h-4" />
+                            <span className="text-sm font-medium">Back to Home</span>
                         </motion.button>
-                    </motion.div>
-                ) : (
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        <AnimatePresence mode="popLayout">
-                            {guides.map((guide, index) => (
-                                <motion.div
-                                    key={guide.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                                    className="bg-[#1E1E1E] border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-colors"
-                                >
-                                    {/* Guide Header */}
-                                    <div className="mb-4">
-                                        <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">
-                                            {guide.title}
-                                        </h3>
-                                        <p className="text-white/60 text-sm line-clamp-2">
-                                            {guide.nutshell || guide.prompt}
-                                        </p>
-                                    </div>
 
-                                    {/* Guide Metadata */}
-                                    <div className="space-y-2 mb-4">
-                                        <div className="flex items-center gap-2 text-xs text-white/50">
-                                            <User className="w-3 h-3" />
-                                            <span>Model: {guide.model}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs text-white/50">
-                                            <Calendar className="w-3 h-3" />
-                                            <span>{new Date(guide.createdAt).toLocaleDateString()}</span>
-                                        </div>
-                                        {guide.tokens && (
-                                            <div className="flex items-center gap-2 text-xs text-white/50">
-                                                <BarChart3 className="w-3 h-3" />
-                                                <span>{guide.tokens.total} tokens</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Privacy Status */}
-                                    <div className="flex items-center gap-2 mb-4">
-                                        {guide.isPublic ? (
-                                            <div className="flex items-center gap-1 text-green-400 text-xs">
-                                                <Globe className="w-3 h-3" />
-                                                <span>Public</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                                                <Lock className="w-3 h-3" />
-                                                <span>Private</span>
-                                            </div>
-                                        )}
-                                        {guide.views !== undefined && (
-                                            <div className="text-white/50 text-xs">
-                                                • {guide.views} views
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="space-y-2">
-                                        <div className="flex gap-2">
-                                            <motion.button
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => openGuide(guide.id)}
-                                                className="flex-1 bg-primary text-black py-2 px-3 rounded-lg text-xs font-medium hover:bg-primary/80 transition-colors flex items-center justify-center gap-1"
-                                            >
-                                                <ExternalLink className="w-3 h-3" />
-                                                Open
-                                            </motion.button>
-                                            <motion.button
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => copyShareLink(guide.id, guide.isPublic)}
-                                                disabled={!guide.isPublic}
-                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                                                    guide.isPublic
-                                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                        : 'bg-white/10 text-white/50 cursor-not-allowed'
-                                                }`}
-                                            >
-                                                <ExternalLink className="w-3 h-3" />
-                                                Share
-                                            </motion.button>
-                                        </div>
-                                        
-                                        <div className="flex gap-2">
-                                            <motion.button
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => togglePrivacy(guide.id, guide.isPublic)}
-                                                className="flex-1 bg-white/10 text-white py-2 px-3 rounded-lg text-xs font-medium hover:bg-white/20 transition-colors flex items-center justify-center gap-1"
-                                            >
-                                                {guide.isPublic ? (
-                                                    <>
-                                                        <EyeOff className="w-3 h-3" />
-                                                        Make Private
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Eye className="w-3 h-3" />
-                                                        Make Public
-                                                    </>
-                                                )}
-                                            </motion.button>
-                                            <motion.button
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => deleteGuide(guide.id)}
-                                                className="bg-red-600/20 text-red-400 py-2 px-3 rounded-lg text-xs font-medium hover:bg-red-600/30 transition-colors flex items-center justify-center"
-                                            >
-                                                <Trash2 className="w-3 h-3" />
-                                            </motion.button>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                        <h1 className="text-white font-just-another-hand text-[96px] md:text-[128px] leading-none mb-4">
+                            Saved Guides
+                        </h1>
+                        <p className="text-white/60 text-xl max-w-2xl">
+                            Manage your saved guides, toggle privacy settings, and share with others.
+                        </p>
                     </div>
-                )}
-            </main>
-        </motion.div>
+
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-red-600/20 border border-red-600/30 rounded-2xl p-6 mb-8"
+                        >
+                            <p className="text-red-300 text-lg">{error}</p>
+                        </motion.div>
+                    )}
+
+                    {guides.length === 0 ? (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="text-center py-20"
+                        >
+                            <div className="relative mb-8">
+                                <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl w-32 h-32 mx-auto"></div>
+                                <BookOpen className="w-20 h-20 text-primary/50 mx-auto relative" />
+                            </div>
+                            <h2 className="text-3xl font-bold text-white mb-4">No guides saved yet</h2>
+                            <p className="text-white/60 text-lg mb-8 max-w-md mx-auto">
+                                Create and save your first guide to see it here. Your saved guides will appear as beautiful cards.
+                            </p>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => router.push('/')}
+                                className="bg-primary text-black px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-primary/80 transition-colors flex items-center gap-3 mx-auto"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Create Your First Guide
+                            </motion.button>
+                        </motion.div>
+                    ) : (
+                        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+                            <AnimatePresence mode="popLayout">
+                                {guides.map((guide, index) => (
+                                    <motion.div
+                                        key={guide.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -20 }}
+                                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                                        className="bg-[#2A2A2A] border border-white/10 rounded-3xl p-8 hover:border-primary/30 hover:bg-[#2A2A2A]/80 transition-all duration-300 group relative overflow-hidden"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        
+                                        <div className="relative z-10">
+                                            <div className="mb-6">
+                                                <h3 className="text-xl font-bold text-white mb-3 line-clamp-2 leading-tight">
+                                                    {guide.title}
+                                                </h3>
+                                                <p className="text-white/60 text-sm line-clamp-3 leading-relaxed">
+                                                    {guide.nutshell || guide.prompt}
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-3 mb-6">
+                                                <div className="flex items-center gap-3 text-sm text-white/50">
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="w-4 h-4" />
+                                                        <span>{guide.model}</span>
+                                                    </div>
+                                                    <div className="w-1 h-1 bg-white/30 rounded-full"></div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="w-4 h-4" />
+                                                        <span>{new Date(guide.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                                {guide.tokens && (
+                                                    <div className="flex items-center gap-2 text-sm text-white/50">
+                                                        <BarChart3 className="w-4 h-4" />
+                                                        <span>{guide.tokens.total.toLocaleString()} tokens</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div className="flex items-center gap-2">
+                                                    {guide.isPublic ? (
+                                                        <div className="flex items-center gap-2 text-green-400 text-sm bg-green-400/10 px-3 py-1.5 rounded-lg border border-green-400/20">
+                                                            <Globe className="w-4 h-4" />
+                                                            <span className="font-medium">Public</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2 text-yellow-400 text-sm bg-yellow-400/10 px-3 py-1.5 rounded-lg border border-yellow-400/20">
+                                                            <Lock className="w-4 h-4" />
+                                                            <span className="font-medium">Private</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {guide.views !== undefined && (
+                                                    <div className="text-white/50 text-sm">
+                                                        {guide.views} views
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="flex gap-3">
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => openGuide(guide.id)}
+                                                        className="flex-1 bg-primary text-black py-3 px-4 rounded-xl font-semibold hover:bg-primary/80 transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        <ExternalLink className="w-4 h-4" />
+                                                        Open Guide
+                                                    </motion.button>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => copyShareLink(guide.id, guide.isPublic)}
+                                                        className={`px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center ${
+                                                            guide.isPublic
+                                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                                : 'bg-white/10 text-white/50 cursor-not-allowed hover:bg-white/15'
+                                                        }`}
+                                                    >
+                                                        <Copy className="w-4 h-4" />
+                                                    </motion.button>
+                                                </div>
+                                                
+                                                <div className="flex gap-3">
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => togglePrivacy(guide.id, guide.isPublic)}
+                                                        className="flex-1 bg-white/10 text-white py-3 px-4 rounded-xl font-medium hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        {guide.isPublic ? (
+                                                            <>
+                                                                <EyeOff className="w-4 h-4" />
+                                                                Make Private
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Eye className="w-4 h-4" />
+                                                                Make Public
+                                                            </>
+                                                        )}
+                                                    </motion.button>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => deleteGuide(guide.id)}
+                                                        className="bg-red-600/20 text-red-400 py-3 px-4 rounded-xl font-medium hover:bg-red-600/30 transition-colors flex items-center justify-center border border-red-500/20"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </motion.button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        </div>
+                    )}
+
+                    <ErrorModal
+                        isOpen={errorModal.isOpen}
+                        onClose={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+                        title={errorModal.title}
+                        message={errorModal.message}
+                        type={errorModal.type}
+                    />
+                </motion.div>
+            </div>
+        </div>
     );
 }

@@ -346,7 +346,6 @@ export default function ProfilePage() {
                             </div>
                         )}
 
-                        {/* Export Cooldown Status */}
                         {!canExport && (
                             <div className="pt-6">
                                 <div className="bg-[#2A2A2A] border border-orange-500/30 rounded-2xl p-4">
