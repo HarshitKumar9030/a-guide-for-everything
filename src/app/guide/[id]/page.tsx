@@ -167,30 +167,24 @@ export default function SharedGuidePage() {
         message: 'Failed to share the guide. Please try again.',
         type: 'error'
       });
-    }
-  };
+    }  };
 
-  const cleanMarkdownContent = (content: string) => {
-    let cleaned = content.replace(/^#\s+.+$/m, '');
-
-    cleaned = cleaned.replace(/##\s*In a Nutshell\s*\n[\s\S]*?(?=\n#|$)/i, '');
-
-    cleaned = cleaned.replace(/^\s*\n+/, '').trim();
-
-    return cleaned;
-  };
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#141414] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"
+          />
           <p className="text-white/70 text-lg">Loading guide...</p>
         </div>
       </div>
     );
-  } if (error) {
+  }if (error) {
     return (
-      <div className="min-h-screen bg-[#141414] py-4 sm:py-8 md:py-12 px-4 sm:px-6 lg:px-8 flex justify-center items-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] py-4 sm:py-8 md:py-12 px-4 sm:px-6 lg:px-8 flex justify-center items-center">
         <div className="w-full max-w-2xl bg-[#1E1E1E] rounded-[24px] sm:rounded-[48px] overflow-hidden shadow-xl p-8 sm:p-12 text-center">
           <div className="relative mb-6 sm:mb-8">
             <div className="absolute inset-0 bg-red-500/5 rounded-full blur-3xl w-20 h-20 sm:w-24 sm:h-24 mx-auto"></div>
@@ -213,9 +207,8 @@ export default function SharedGuidePage() {
       </div>
     );
   }
-  if (!guide) return null;
-  return (
-    <div className="min-h-screen bg-[#141414] py-4 sm:py-8 md:py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
+  if (!guide) return null;  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] py-4 sm:py-8 md:py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
       <div className="w-full max-w-6xl bg-[#1E1E1E] rounded-[24px] sm:rounded-[48px] lg:rounded-[72px] overflow-hidden shadow-xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

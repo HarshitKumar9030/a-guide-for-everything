@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { 
-    BookOpen, 
-    Eye, 
-    EyeOff, 
-    ExternalLink, 
-    Trash2, 
+import {
+    BookOpen,
+    Eye,
+    EyeOff,
+    ExternalLink,
+    Trash2,
     Calendar,
     User,
     Globe,
@@ -44,7 +44,7 @@ export default function SavedGuidesPage() {
 
     useEffect(() => {
         if (status === 'loading') return;
-        
+
         if (!session) {
             router.push('/auth/signin');
             return;
@@ -87,8 +87,8 @@ export default function SavedGuidesPage() {
             const result = await response.json();
 
             if (response.ok) {
-                setGuides(prev => prev.map(guide => 
-                    guide.id === guideId 
+                setGuides(prev => prev.map(guide =>
+                    guide.id === guideId
                         ? { ...guide, isPublic: !currentPrivacy }
                         : guide
                 ));
@@ -124,7 +124,7 @@ export default function SavedGuidesPage() {
 
     const openGuide = (guideId: string) => {
         router.push(`/guide/${guideId}`);
-    };    const copyShareLink = async (guideId: string, isPublic: boolean) => {
+    }; const copyShareLink = async (guideId: string, isPublic: boolean) => {
         if (!isPublic) {
             setErrorModal({
                 isOpen: true,
@@ -153,22 +153,19 @@ export default function SavedGuidesPage() {
                 type: 'error'
             });
         }
-    };    if (status === 'loading' || loading) {
-        return (            <div className="min-h-screen bg-[#141414] flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                    <p className="text-white/70 text-lg">Loading your guides...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!session) {
+    }; if (status === 'loading') {
         return null;
     }
 
-    return (
-        <div className="min-h-screen bg-[#141414] py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
+    if (!session) {
+        router.push('/auth/signin');
+        return null;
+    }
+
+    if (loading) {
+        return null;
+    } return (
+        <div className="min-h-screen bg-gradient-to-b from-[#141414] to-[#1E1E1E] py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
             <div className="w-full max-w-7xl bg-[#1E1E1E] rounded-[72px] overflow-hidden shadow-xl">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -242,7 +239,7 @@ export default function SavedGuidesPage() {
                                         className="bg-[#2A2A2A] border border-white/10 rounded-3xl p-8 hover:border-primary/30 hover:bg-[#2A2A2A]/80 transition-all duration-300 group relative overflow-hidden"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                        
+
                                         <div className="relative z-10">
                                             <div className="mb-6">
                                                 <h3 className="text-xl font-bold text-white mb-3 line-clamp-2 leading-tight">
@@ -309,16 +306,15 @@ export default function SavedGuidesPage() {
                                                         whileHover={{ scale: 1.02 }}
                                                         whileTap={{ scale: 0.98 }}
                                                         onClick={() => copyShareLink(guide.id, guide.isPublic)}
-                                                        className={`px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center ${
-                                                            guide.isPublic
+                                                        className={`px-4 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center ${guide.isPublic
                                                                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                                                                 : 'bg-white/10 text-white/50 cursor-not-allowed hover:bg-white/15'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <Copy className="w-4 h-4" />
                                                     </motion.button>
                                                 </div>
-                                                
+
                                                 <div className="flex gap-3">
                                                     <motion.button
                                                         whileHover={{ scale: 1.02 }}
