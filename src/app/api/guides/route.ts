@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getGuidesCollection, SavedGuide } from '@/lib/guides-db';
-import { v4 as uuidv4 } from 'uuid';
+import { getUserTeamMembers } from '@/lib/team';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,11 +15,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, content, nutshell, model, prompt, tokens, isPublic = false } = await req.json();
+    const { 
+      title, 
+      content = '', 
+      nutshell, 
+      model = 'collaborative-guide', 
+      prompt = 'User created guide', 
+      tokens, 
+      isPublic = false,
+      collaborative = false,
+      tags = [],
+      folderId,
+      folderPath
+    } = await req.json();
 
-    if (!title || !content || !model || !prompt) {
+    if (!title) {
       return NextResponse.json(
-        { error: 'Title, content, model, and prompt are required' },
+        { error: 'Title is required' },
         { status: 400 }
       );
     }
@@ -27,25 +39,20 @@ export async function POST(req: NextRequest) {
     const guides = await getGuidesCollection();
     const userId = session.user.id || session.user.email || '';
     
-    // Check for duplicate guide based on content and user
-    const existingGuide = await guides.findOne({
-      userId: userId,
-      content: content,
-      prompt: prompt
-    });
-
-    if (existingGuide) {
-      return NextResponse.json({
-        error: 'You have already saved this guide',
-        duplicate: true,
-        existingGuideId: existingGuide.id
-      }, { status: 409 });
+    // If collaborative, automatically share with team members
+    let sharedWith: string[] = [];
+    if (collaborative) {
+      try {
+        const teamMembers = await getUserTeamMembers(session.user.email || '');
+        sharedWith = teamMembers.map(member => member.email);
+        console.log('Auto-sharing collaborative guide with team members:', sharedWith);
+      } catch (error) {
+        console.error('Error fetching team members for collaborative guide:', error);
+        // Continue without sharing if team fetch fails
+      }
     }
     
-    const guideId = uuidv4();
-    
     const newGuide: SavedGuide = {
-      id: guideId,
       title,
       content,
       nutshell,
@@ -54,6 +61,11 @@ export async function POST(req: NextRequest) {
       userId,
       userEmail: session.user.email || '',
       isPublic,
+      collaborative,
+      sharedWith,
+      tags,
+      folderId,
+      folderPath,
       tokens,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -64,12 +76,10 @@ export async function POST(req: NextRequest) {
     const result = await guides.insertOne(newGuide);
     console.log('Guide saved with ID:', result.insertedId);
 
-    return NextResponse.json({
-      success: true,
-      guideId,
-      shareUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/guide/${guideId}`,
-      message: 'Guide saved successfully'
-    });
+    // Return the guide with the MongoDB _id
+    const savedGuide = { ...newGuide, _id: result.insertedId.toString() };
+
+    return NextResponse.json(savedGuide);
 
   } catch (error) {
     console.error('Save guide error:', error);
@@ -97,7 +107,13 @@ export async function GET() {
       userId: userId
     }).sort({ createdAt: -1 }).toArray();
 
-    return NextResponse.json({ guides: userGuides });
+    // Convert MongoDB _id to string and ensure proper format
+    const formattedGuides = userGuides.map(guide => ({
+      ...guide,
+      _id: guide._id?.toString() || ''
+    }));
+
+    return NextResponse.json({ guides: formattedGuides });
 
   } catch (error) {
     console.error('Get guides error:', error);

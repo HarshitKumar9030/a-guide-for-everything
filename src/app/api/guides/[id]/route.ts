@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getGuidesCollection } from '@/lib/guides-db';
+import { ObjectId } from 'mongodb';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -12,7 +13,19 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const guides = await getGuidesCollection();
     
-    const guide = await guides.findOne({ id });
+    // Try to find by MongoDB _id first, then by custom id field for backwards compatibility
+    let guide;
+    try {
+      if (ObjectId.isValid(id)) {
+        guide = await guides.findOne({ _id: new ObjectId(id) });
+      }
+      if (!guide) {
+        guide = await guides.findOne({ id });
+      }
+    } catch (_error) {
+      // If ObjectId conversion fails, try finding by custom id field
+      guide = await guides.findOne({ id });
+    }
     
     if (!guide) {
       return NextResponse.json(
@@ -34,13 +47,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     // Increment view count if not the owner
     if (!isOwner) {
-      await guides.updateOne(
-        { id },
-        { $inc: { views: 1 } }
-      );
+      const updateQuery = guide._id ? { _id: guide._id } : { id: guide.id };
+      await guides.updateOne(updateQuery, { $inc: { views: 1 } });
     }
 
-    return NextResponse.json({ guide });
+    return NextResponse.json({ guide: { ...guide, _id: guide._id?.toString() } });
 
   } catch (error) {
     console.error('Get guide error:', error);
@@ -51,7 +62,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export async function PUT(req: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -63,11 +74,31 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const { isPublic, title } = await req.json();
+    const { content, title, isPublic, collaborative, tags } = await req.json();
     
     const guides = await getGuidesCollection();
     
-    const guide = await guides.findOne({ id });
+    // Find guide by _id or custom id
+    let guide;
+    let updateQuery: { _id: ObjectId } | { id: string };
+    
+    try {
+      if (ObjectId.isValid(id)) {
+        guide = await guides.findOne({ _id: new ObjectId(id) });
+        if (guide) {
+          updateQuery = { _id: new ObjectId(id) };
+        } else {
+          guide = await guides.findOne({ id });
+          updateQuery = { id };
+        }
+      } else {
+        guide = await guides.findOne({ id });
+        updateQuery = { id };
+      }
+    } catch (_error) {
+      guide = await guides.findOne({ id });
+      updateQuery = { id };
+    }
     
     if (!guide) {
       return NextResponse.json(
@@ -86,26 +117,24 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const updateData: Partial<{ isPublic: boolean; title: string; updatedAt: Date }> = { 
+    const updateData: Record<string, unknown> = { 
       updatedAt: new Date() 
     };
     
-    if (typeof isPublic === 'boolean') {
-      updateData.isPublic = isPublic;
-    }
-    
-    if (title) {
-      updateData.title = title;
-    }
+    if (content !== undefined) updateData.content = content;
+    if (title !== undefined) updateData.title = title;
+    if (typeof isPublic === 'boolean') updateData.isPublic = isPublic;
+    if (typeof collaborative === 'boolean') updateData.collaborative = collaborative;
+    if (Array.isArray(tags)) updateData.tags = tags;
 
-    await guides.updateOne(
-      { id },
-      { $set: updateData }
-    );
+    await guides.updateOne(updateQuery, { $set: updateData });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Guide updated successfully'
+    // Fetch updated guide
+    const updatedGuide = await guides.findOne(updateQuery);
+
+    return NextResponse.json({ 
+      ...updatedGuide, 
+      _id: updatedGuide?._id?.toString() 
     });
 
   } catch (error) {
@@ -131,7 +160,27 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const guides = await getGuidesCollection();
     
-    const guide = await guides.findOne({ id });
+    // Find guide by _id or custom id
+    let guide;
+    let deleteQuery: { _id: ObjectId } | { id: string };
+    
+    try {
+      if (ObjectId.isValid(id)) {
+        guide = await guides.findOne({ _id: new ObjectId(id) });
+        if (guide) {
+          deleteQuery = { _id: new ObjectId(id) };
+        } else {
+          guide = await guides.findOne({ id });
+          deleteQuery = { id };
+        }
+      } else {
+        guide = await guides.findOne({ id });
+        deleteQuery = { id };
+      }
+    } catch (_error) {
+      guide = await guides.findOne({ id });
+      deleteQuery = { id };
+    }
     
     if (!guide) {
       return NextResponse.json(
@@ -150,7 +199,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    await guides.deleteOne({ id });
+    await guides.deleteOne(deleteQuery);
 
     return NextResponse.json({
       success: true,

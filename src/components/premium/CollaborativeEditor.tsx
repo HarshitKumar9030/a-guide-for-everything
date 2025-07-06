@@ -104,7 +104,7 @@ export default function CollaborativeEditor({
   useEffect(() => {
     if (!session?.user?.email || !session?.user?.name) return;
 
-    socketRef.current = io('/api/socket/io', {
+    socketRef.current = io('http://localhost:3001', {
       query: {
         guideId,
         userId: session.user.email,

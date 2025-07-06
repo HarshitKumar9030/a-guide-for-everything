@@ -44,6 +44,9 @@ export default function GuidesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [guides, setGuides] = useState<Guide[]>([]);
+  const [collaborativeGuides, setCollaborativeGuides] = useState<Guide[]>([]);
+  const [folders, setFolders] = useState<any[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [editingGuide, setEditingGuide] = useState<string | null>(null);
@@ -97,8 +100,8 @@ export default function GuidesPage() {
           const data = await response.json();
           setUserPlan({ plan: data.subscription?.plan || 'free' });
         }
-      } catch (error) {
-        console.error('Error fetching user plan:', error);
+      } catch (_error) {
+        console.error('Error fetching user plan:', _error);
       }
     };
 
@@ -110,18 +113,44 @@ export default function GuidesPage() {
           const data = await response.json();
           setGuides(data.guides || []);
         }
-      } catch (error) {
-        console.error('Error fetching guides:', error);
+      } catch (_error) {
+        console.error('Error fetching guides:', _error);
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchCollaborativeGuides = async () => {
+      try {
+        const response = await fetch('/api/guides/collaborative');
+        if (response.ok) {
+          const data = await response.json();
+          setCollaborativeGuides(data.guides || []);
+        }
+      } catch (_error) {
+        console.error('Error fetching collaborative guides:', _error);
+      }
+    };
+
+    const fetchFolders = async () => {
+      try {
+        const response = await fetch('/api/folders');
+        if (response.ok) {
+          const data = await response.json();
+          setFolders(data.folders || []);
+        }
+      } catch (_error) {
+        console.error('Error fetching folders:', _error);
       }
     };
 
     if (session?.user?.id) {
       fetchUserPlan();
       fetchGuides();
+      fetchFolders();
+      fetchCollaborativeGuides(); // Fetch collaborative guides for all users
     }
-  }, [session]);
+  }, [session, userPlan.plan]);
 
   const handleCreateGuide = async (collaborative = false) => {
     if (!session?.user?.id) return;
@@ -187,7 +216,11 @@ export default function GuidesPage() {
     }
   };
 
-  const filteredGuides = guides.filter(guide => {
+  const filteredGuides = [...guides, ...collaborativeGuides].filter((guide, index, self) => {
+    // Remove duplicates based on _id
+    const isUnique = self.findIndex(g => g._id === guide._id) === index;
+    if (!isUnique) return false;
+    
     const matchesSearch = guide.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          guide.content.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterTag === 'all' || 

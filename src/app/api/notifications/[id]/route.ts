@@ -15,7 +15,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     if (!ObjectId.isValid(id)) {
@@ -51,7 +51,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid notification ID' }, { status: 400 });

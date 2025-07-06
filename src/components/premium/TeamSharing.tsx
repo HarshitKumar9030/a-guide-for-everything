@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Plus, X, Mail, Copy, Check, Crown } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 interface TeamMember {
   id: string;
@@ -18,6 +19,7 @@ interface TeamSharingProps {
 }
 
 export default function TeamSharing({ userPlan }: TeamSharingProps) {
+  const { data: session } = useSession();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
@@ -66,6 +68,12 @@ export default function TeamSharing({ userPlan }: TeamSharingProps) {
   const inviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail || !hasTeamAccess) return;
+
+    // Prevent self-invitation
+    if (session?.user?.email && inviteEmail.toLowerCase() === session.user.email.toLowerCase()) {
+      showStatus('error', 'You cannot invite yourself to the team');
+      return;
+    }
 
     setIsInviting(true);
     try {
@@ -179,8 +187,9 @@ export default function TeamSharing({ userPlan }: TeamSharingProps) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="submit"
-            disabled={isInviting}
+            disabled={isInviting || (!!session?.user?.email && inviteEmail.toLowerCase() === session.user.email.toLowerCase())}
             className="bg-primary hover:bg-primary/80 text-black px-6 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            title={!!session?.user?.email && inviteEmail.toLowerCase() === session.user.email.toLowerCase() ? "You cannot invite yourself" : ""}
           >
             {isInviting ? (
               <>Inviting...</>

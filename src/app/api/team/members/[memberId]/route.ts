@@ -19,7 +19,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Pro+ plan required for team features' }, { status: 403 });
     }
 
-    const { memberId } = params;
+    const { memberId } = await params;
     if (!memberId) {
       return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
     }

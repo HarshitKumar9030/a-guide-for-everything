@@ -20,9 +20,14 @@ interface TeamInvitation {
   status: string;
 }
 
+export async function GET() {
+  return NextResponse.json({ error: 'Method not allowed. Use POST to invite team members.' }, { status: 405 });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    
     if (!session?.user?.id || !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -35,6 +40,11 @@ export async function POST(request: NextRequest) {
     const { email } = await request.json();
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    // Prevent self-invitation
+    if (email.toLowerCase() === session.user.email?.toLowerCase()) {
+      return NextResponse.json({ error: 'You cannot invite yourself to the team' }, { status: 400 });
     }
 
     const { db } = await connectToDatabase();
