@@ -25,6 +25,23 @@ export async function POST(req: NextRequest) {
     }
 
     const guides = await getGuidesCollection();
+    const userId = session.user.id || session.user.email || '';
+    
+    // Check for duplicate guide based on content and user
+    const existingGuide = await guides.findOne({
+      userId: userId,
+      content: content,
+      prompt: prompt
+    });
+
+    if (existingGuide) {
+      return NextResponse.json({
+        error: 'You have already saved this guide',
+        duplicate: true,
+        existingGuideId: existingGuide.id
+      }, { status: 409 });
+    }
+    
     const guideId = uuidv4();
     
     const newGuide: SavedGuide = {
@@ -34,7 +51,7 @@ export async function POST(req: NextRequest) {
       nutshell,
       model,
       prompt,
-      userId: session.user.id || session.user.email || '',
+      userId,
       userEmail: session.user.email || '',
       isPublic,
       tokens,

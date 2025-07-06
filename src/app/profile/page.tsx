@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
 import AvatarUpload from '@/components/core/AvatarUpload';
 import ConfirmModal from '@/components/core/ConfirmModal';
 import ErrorModal from '@/components/core/ErrorModal';
@@ -27,11 +28,17 @@ export default function ProfilePage() {
     const [userLimits, setUserLimits] = useState<{
         llamaGuides: number;
         geminiGuides: number;
-        remaining: { llama: number; gemini: number };
-        limits: { llamaMax: number; geminiMax: number };
+        deepseekGuides: number;
+        gpt41miniGuides: number;
+        o3miniGuides: number;
+        remaining: { llama: number; gemini: number; deepseek: number; gpt41mini: number; o3mini: number };
+        limits: { llamaMax: number; geminiMax: number; deepseekMax: number; gpt41miniMax: number; o3miniMax: number };
     } | null>(null);    // Delete account modal state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Guide usage dropdown state
+    const [isGuideUsageOpen, setIsGuideUsageOpen] = useState(false);
 
     // Error modal state
     const [errorModal, setErrorModal] = useState<{
@@ -313,36 +320,91 @@ export default function ProfilePage() {
                             </p>
                         </div>                        {userLimits && (
                             <div className="pt-8">
-                                <h3 className="text-white text-2xl mb-4">Guide Usage</h3>
-                                <div className="bg-[#2A2A2A] border border-[#323232] rounded-2xl p-4 space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-300">Llama Guides:</span>
-                                        <span className="text-white font-medium">
-                                            {userLimits.llamaGuides}/{userLimits.limits.llamaMax}
-                                            <span className="text-gray-400 ml-2">({userLimits.remaining.llama} left)</span>
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-background/90 rounded-full h-2">
-                                        <div
-                                            className="bg-primary h-2 rounded-full transition-all duration-300"
-                                            style={{ width: `${(userLimits.llamaGuides / userLimits.limits.llamaMax) * 100}%` }}
-                                        ></div>
-                                    </div>
-
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-300">Gemini Guides:</span>
-                                        <span className="text-white font-medium">
-                                            {userLimits.geminiGuides}/{userLimits.limits.geminiMax}
-                                            <span className="text-gray-400 ml-2">({userLimits.remaining.gemini} left)</span>
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-background/90 rounded-full h-2">
-                                        <div
-                                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                            style={{ width: `${(userLimits.geminiGuides / userLimits.limits.geminiMax) * 100}%` }}
-                                        ></div>
-                                    </div>
+                                <div 
+                                    className="flex items-center justify-between cursor-pointer mb-4 p-3 rounded-xl hover:bg-[#2A2A2A]/50 transition-all duration-300 ease-in-out group"
+                                    onClick={() => setIsGuideUsageOpen(!isGuideUsageOpen)}
+                                >
+                                    <h3 className="text-white text-2xl group-hover:text-primary transition-colors duration-300">Guide Usage</h3>
+                                    <ChevronDown 
+                                        className={`w-6 h-6 text-white group-hover:text-primary transition-all duration-300 ease-in-out ${isGuideUsageOpen ? 'rotate-180' : 'rotate-0'}`}
+                                    />
                                 </div>
+                                
+                                {isGuideUsageOpen && (
+                                    <div className="overflow-hidden transition-all duration-500 ease-in-out">
+                                        <div className="bg-[#2A2A2A] border border-[#323232] rounded-2xl p-4 space-y-3 animate-in slide-in-from-top-2 fade-in-0 duration-500">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-300">Llama Guides:</span>
+                                                <span className="text-white font-medium">
+                                                    {userLimits.llamaGuides}/{userLimits.limits.llamaMax}
+                                                    <span className="text-gray-400 ml-2">({userLimits.remaining.llama} left)</span>
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-background/90 rounded-full h-2">
+                                                <div
+                                                    className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
+                                                    style={{ width: `${(userLimits.llamaGuides / userLimits.limits.llamaMax) * 100}%` }}
+                                                ></div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-300">Gemini Guides:</span>
+                                                <span className="text-white font-medium">
+                                                    {userLimits.geminiGuides}/{userLimits.limits.geminiMax}
+                                                    <span className="text-gray-400 ml-2">({userLimits.remaining.gemini} left)</span>
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-background/90 rounded-full h-2">
+                                                <div
+                                                    className="bg-blue-500 h-2 rounded-full transition-all duration-500 ease-out"
+                                                    style={{ width: `${(userLimits.geminiGuides / userLimits.limits.geminiMax) * 100}%` }}
+                                                ></div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-300">DeepSeek Guides:</span>
+                                                <span className="text-white font-medium">
+                                                    {userLimits.deepseekGuides}/{userLimits.limits.deepseekMax}
+                                                    <span className="text-gray-400 ml-2">({userLimits.remaining.deepseek} left)</span>
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-background/90 rounded-full h-2">
+                                                <div
+                                                    className="bg-green-500 h-2 rounded-full transition-all duration-500 ease-out"
+                                                    style={{ width: `${(userLimits.deepseekGuides / userLimits.limits.deepseekMax) * 100}%` }}
+                                                ></div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-300">GPT-4.1 Mini Guides:</span>
+                                                <span className="text-white font-medium">
+                                                    {userLimits.gpt41miniGuides}/{userLimits.limits.gpt41miniMax}
+                                                    <span className="text-gray-400 ml-2">({userLimits.remaining.gpt41mini} left)</span>
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-background/90 rounded-full h-2">
+                                                <div
+                                                    className="bg-purple-500 h-2 rounded-full transition-all duration-500 ease-out"
+                                                    style={{ width: `${(userLimits.gpt41miniGuides / userLimits.limits.gpt41miniMax) * 100}%` }}
+                                                ></div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-300">O3 Mini Guides:</span>
+                                                <span className="text-white font-medium">
+                                                    {userLimits.o3miniGuides}/{userLimits.limits.o3miniMax}
+                                                    <span className="text-gray-400 ml-2">({userLimits.remaining.o3mini} left)</span>
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-background/90 rounded-full h-2">
+                                                <div
+                                                    className="bg-orange-500 h-2 rounded-full transition-all duration-500 ease-out"
+                                                    style={{ width: `${(userLimits.o3miniGuides / userLimits.limits.o3miniMax) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 

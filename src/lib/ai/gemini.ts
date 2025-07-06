@@ -20,7 +20,12 @@ export async function geminiCompletion(prompt: string) {
             success: true,
             content: response.text,
             model: 'gemini-2.5-flash',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            tokens: {
+                input: response.usageMetadata?.promptTokenCount || 0,
+                output: response.usageMetadata?.candidatesTokenCount || 0,
+                total: response.usageMetadata?.totalTokenCount || 0
+            }
         };
 
     } catch (error) {

@@ -7,6 +7,7 @@ import { Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import Stars from '../core/Stars';
 import ComingSoonModal from '../core/ComingSoonModal';
 import PleaseLogin from '../core/PleaseLogin';
+import PremiumUpgradeModal from '../core/PremiumUpgradeModal';
 // import Footer from '../core/Footer';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -14,11 +15,14 @@ import { useGuide } from '@/contexts/GuideContext';
 import { GuideStorage } from '@/lib/guide-storage';
 
 // Export the model type and available models
-export type ModelType = 'gemini-flash-2.5' | 'llama-4-hackclub';
+export type ModelType = 'gemini-flash-2.5' | 'llama-4-hackclub' | 'deepseek-r1-free' | 'gpt-4.1-mini' | 'o3-mini';
 
 export const availableModels = [
     { id: 'gemini-flash-2.5' as ModelType, name: 'Gemini Flash 2.5', provider: 'Google' },
-    { id: 'llama-4-hackclub' as ModelType, name: 'Llama 4', provider: 'HackClub' }
+    { id: 'llama-4-hackclub' as ModelType, name: 'Llama 4', provider: 'HackClub' },
+    { id: 'deepseek-r1-free' as ModelType, name: 'DeepSeek R1', provider: 'OpenRouter' },
+    { id: 'gpt-4.1-mini' as ModelType, name: 'GPT-4.1 Mini', provider: 'Azure OpenAI' },
+    { id: 'o3-mini' as ModelType, name: 'O3 Mini', provider: 'Azure OpenAI' }
 ];
 
 let selectedModelGlobal: ModelType = 'llama-4-hackclub'; // Default to Llama for guests
@@ -28,19 +32,25 @@ const useUserLimits = () => {
     const [limits, setLimits] = useState<{
         llamaGuides: number;
         geminiGuides: number;
-        remaining: { llama: number; gemini: number };
+        deepseekGuides: number;
+        gpt41miniGuides: number;
+        o3miniGuides: number;
+        remaining: { llama: number; gemini: number; deepseek: number; gpt41mini: number; o3mini: number };
         guestRemaining?: number;
     } | null>(null);
     const [loading, setLoading] = useState(false);
     const { data: session } = useSession();
 
-    const fetchLimits = async () => {
+    const fetchLimits = React.useCallback(async () => {
         if (!session) {
             const guestCount = parseInt(localStorage.getItem('guest_guide_count') || '0');
             setLimits({
                 llamaGuides: 0,
                 geminiGuides: 0,
-                remaining: { llama: 0, gemini: 0 },
+                deepseekGuides: 0,
+                gpt41miniGuides: 0,
+                o3miniGuides: 0,
+                remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41mini: 0, o3mini: 0 },
                 guestRemaining: Math.max(0, 3 - guestCount)
             });
             return;
@@ -58,11 +68,11 @@ const useUserLimits = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [session]);
 
     React.useEffect(() => {
         fetchLimits();
-    }, [session]);
+    }, [session, fetchLimits]);
 
     return { limits, loading, refetch: fetchLimits };
 };
@@ -98,6 +108,7 @@ export default function DesktopLayout() {
     const [showHoverBubble, setShowHoverBubble] = useState(false);
     const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
     const [isPleaseLoginModalOpen, setIsPleaseLoginModalOpen] = useState(false);
+    const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
     const [shimmerTrigger, setShimmerTrigger] = useState(0);
     const [isGenerating, setIsGenerating] = useState(false);
     const { limits, loading, refetch } = useUserLimits();
@@ -109,9 +120,9 @@ export default function DesktopLayout() {
             setSelectedModel('llama-4-hackclub');
             updateSelectedModel('llama-4-hackclub');
         }
-    }, [session]); const handleModelChange = (model: ModelType) => {
-        // If guest tries to select Gemini, show login modal
-        if (!session && model !== 'llama-4-hackclub') {
+    }, [session]);    const handleModelChange = (model: ModelType) => {
+        // If guest tries to select premium models, show login modal
+        if (!session && model !== 'llama-4-hackclub' && model !== 'deepseek-r1-free') {
             setIsPleaseLoginModalOpen(true);
             setIsDropdownOpen(false);
             return;
@@ -139,9 +150,15 @@ export default function DesktopLayout() {
                 return;
             }
 
-            if (selectedModel !== 'llama-4-hackclub') {
+            if (selectedModel !== 'llama-4-hackclub' && selectedModel !== 'deepseek-r1-free') {
                 setSelectedModel('llama-4-hackclub');
                 updateSelectedModel('llama-4-hackclub');
+            }
+        } else {
+            // Check if user has reached their limit for the selected model
+            if (limits && isGenerationDisabled()) {
+                setIsPremiumModalOpen(true);
+                return;
             }
         }
 
@@ -207,8 +224,26 @@ export default function DesktopLayout() {
         }
 
         if (limits) {
-            const current = selectedModel === 'llama-4-hackclub' ? limits.remaining.llama : limits.remaining.gemini;
-            const max = selectedModel === 'llama-4-hackclub' ? 6 : 4;
+            let current = 0;
+            let max = 0;
+            
+            if (selectedModel === 'llama-4-hackclub') {
+                current = limits.remaining.llama;
+                max = 6;
+            } else if (selectedModel === 'gemini-flash-2.5') {
+                current = limits.remaining.gemini;
+                max = 4;
+            } else if (selectedModel === 'deepseek-r1-free') {
+                current = limits.remaining.deepseek;
+                max = 4;
+            } else if (selectedModel === 'gpt-4.1-mini') {
+                current = limits.remaining.gpt41mini;
+                max = 3;
+            } else if (selectedModel === 'o3-mini') {
+                current = limits.remaining.o3mini;
+                max = 2;
+            }
+            
             return `${current}/${max}`;
         }
 
@@ -224,10 +259,42 @@ export default function DesktopLayout() {
         }
 
         if (limits) {
-            return selectedModel === 'llama-4-hackclub' ? limits.remaining.llama <= 0 : limits.remaining.gemini <= 0;
+            if (selectedModel === 'llama-4-hackclub') {
+                return limits.remaining.llama <= 0;
+            } else if (selectedModel === 'gemini-flash-2.5') {
+                return limits.remaining.gemini <= 0;
+            } else if (selectedModel === 'deepseek-r1-free') {
+                return limits.remaining.deepseek <= 0;
+            } else if (selectedModel === 'gpt-4.1-mini') {
+                return limits.remaining.gpt41mini <= 0;
+            } else if (selectedModel === 'o3-mini') {
+                return limits.remaining.o3mini <= 0;
+            }
         }
 
         return false;
+    };
+
+    const handleSubmitButtonClick = () => {
+        if (!inputValue.trim() || isGenerating) return;
+        
+        // If user is not logged in and has reached guest limit, show login modal
+        if (!session) {
+            const guestCount = parseInt(localStorage.getItem('guest_guide_count') || '0');
+            if (guestCount >= 3) {
+                setIsPleaseLoginModalOpen(true);
+                return;
+            }
+        }
+        
+        // If user is logged in but has reached their limit, show premium modal
+        if (session && limits && isGenerationDisabled()) {
+            setIsPremiumModalOpen(true);
+            return;
+        }
+        
+        // Otherwise, proceed with normal submission
+        handleSubmit();
     };
 
     React.useEffect(() => {
@@ -279,7 +346,35 @@ export default function DesktopLayout() {
                             {!session ? (
                                 `${Math.max(0, 3 - parseInt(localStorage.getItem('guest_guide_count') || '0'))}/3 guest guides left`
                             ) : limits ? (
-                                `${selectedModel === 'llama-4-hackclub' ? limits.remaining.llama : limits.remaining.gemini}/${selectedModel === 'llama-4-hackclub' ? 6 : 4} ${selectedModel === 'llama-4-hackclub' ? 'Llama' : 'Gemini'} left`
+                                (() => {
+                                    let current = 0;
+                                    let max = 0;
+                                    let modelName = '';
+                                    
+                                    if (selectedModel === 'llama-4-hackclub') {
+                                        current = limits.remaining.llama;
+                                        max = 6;
+                                        modelName = 'Llama';
+                                    } else if (selectedModel === 'gemini-flash-2.5') {
+                                        current = limits.remaining.gemini;
+                                        max = 4;
+                                        modelName = 'Gemini';
+                                    } else if (selectedModel === 'deepseek-r1-free') {
+                                        current = limits.remaining.deepseek;
+                                        max = 4;
+                                        modelName = 'DeepSeek';
+                                    } else if (selectedModel === 'gpt-4.1-mini') {
+                                        current = limits.remaining.gpt41mini;
+                                        max = 3;
+                                        modelName = 'GPT-4.1';
+                                    } else if (selectedModel === 'o3-mini') {
+                                        current = limits.remaining.o3mini;
+                                        max = 2;
+                                        modelName = 'O3';
+                                    }
+                                    
+                                    return `${current}/${max} ${modelName} left`;
+                                })()
                             ) : (
                                 '— guides left'
                             )}
@@ -345,7 +440,7 @@ export default function DesktopLayout() {
                                 </Shimmer>
                                 {isDropdownOpen && (<div className="absolute top-full mt-2 right-0 bg-[#272727] rounded-xl shadow-2xl border border-white/10 min-w-[220px] max-w-[280px] max-h-[200px] overflow-y-auto z-10 p-1">
                                     {availableModels.map((model) => {
-                                        const isDisabled = !session && model.id !== 'llama-4-hackclub';
+                                        const isDisabled = !session && model.id !== 'llama-4-hackclub' && model.id !== 'deepseek-r1-free';
                                         return (
                                             <div
                                                 key={model.id}
@@ -374,9 +469,9 @@ export default function DesktopLayout() {
                             </div>                                <div
                                 className={`box p-2 rounded-xl cursor-pointer transition-colors ${!isGenerationDisabled()
                                         ? 'bg-primary text-background hover:bg-primary/80'
-                                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                        : 'bg-gray-600 text-gray-400 cursor-pointer'
                                     }`}
-                                onClick={!isGenerationDisabled() ? handleSubmit : undefined}
+                                onClick={handleSubmitButtonClick}
                             >
                                     {isGenerating ? (
                                         <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -397,6 +492,12 @@ export default function DesktopLayout() {
             <PleaseLogin
                 isOpen={isPleaseLoginModalOpen}
                 onClose={() => setIsPleaseLoginModalOpen(false)}
+            />
+
+            <PremiumUpgradeModal
+                isOpen={isPremiumModalOpen}
+                onClose={() => setIsPremiumModalOpen(false)}
+                currentModel={availableModels.find(m => m.id === selectedModel)?.name || selectedModel}
             />
         </div>
     );

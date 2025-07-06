@@ -4,6 +4,7 @@ import { Plus, ArrowUp, ChevronDown } from 'lucide-react';
 import CoolSquare from '../core/CoolSquare';
 import ComingSoonModal from '../core/ComingSoonModal';
 import PleaseLogin from '../core/PleaseLogin';
+import PremiumUpgradeModal from '../core/PremiumUpgradeModal';
 // import Footer from '../core/Footer';
 import { DefaultTypewriterText } from '../animation/text';
 import { ModelType, availableModels, updateSelectedModel } from './DesktopLayout';
@@ -18,7 +19,10 @@ const useUserLimits = () => {
   const [limits, setLimits] = useState<{
     llamaGuides: number;
     geminiGuides: number;
-    remaining: { llama: number; gemini: number };
+    deepseekGuides: number;
+    gpt41miniGuides: number;
+    o3miniGuides: number;
+    remaining: { llama: number; gemini: number; deepseek: number; gpt41mini: number; o3mini: number };
     guestRemaining?: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,7 +35,10 @@ const useUserLimits = () => {
       setLimits({
         llamaGuides: 0,
         geminiGuides: 0,
-        remaining: { llama: 0, gemini: 0 },
+        deepseekGuides: 0,
+        gpt41miniGuides: 0,
+        o3miniGuides: 0,
+        remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41mini: 0, o3mini: 0 },
         guestRemaining: Math.max(0, 3 - guestCount)
       });
       return;
@@ -68,6 +75,7 @@ export default function MobileLayout() {
   const [isInputMode, setIsInputMode] = useState(false);
   const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [isPleaseLoginModalOpen, setIsPleaseLoginModalOpen] = useState(false);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const [shimmerTrigger, setShimmerTrigger] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const { limits, refetch } = useUserLimits();
@@ -82,8 +90,8 @@ export default function MobileLayout() {
     }
   }, [session]);
   const handleModelChange = (model: ModelType) => {
-    // If guest user tries to select Gemini, show login modal
-    if (!session && model !== 'llama-4-hackclub') {
+    // If guest user tries to select premium models, show login modal
+    if (!session && model !== 'llama-4-hackclub' && model !== 'deepseek-r1-free') {
       setIsPleaseLoginModalOpen(true);
       setIsDropdownOpen(false);
       return;
@@ -115,10 +123,16 @@ export default function MobileLayout() {
         return;
       }
 
-      // Ensure guests can only use Llama
-      if (selectedModel !== 'llama-4-hackclub') {
+      // Ensure guests can only use Llama or DeepSeek
+      if (selectedModel !== 'llama-4-hackclub' && selectedModel !== 'deepseek-r1-free') {
         setSelectedModel('llama-4-hackclub');
         updateSelectedModel('llama-4-hackclub');
+      }
+    } else {
+      // Check if user has reached their limit for the selected model
+      if (limits && isGenerationDisabled()) {
+        setIsPremiumModalOpen(true);
+        return;
       }
     }
 
@@ -181,19 +195,59 @@ export default function MobileLayout() {
 
   const currentModel = availableModels.find(m => m.id === selectedModel);
 
-  const getRemainingCount = () => {
+  const _getRemainingCount = () => {
     if (!session) {
       const guestCount = parseInt(localStorage.getItem('guest_guide_count') || '0');
       return `${Math.max(0, 3 - guestCount)}/3`;
     }
 
     if (limits) {
-      const current = selectedModel === 'llama-4-hackclub' ? limits.remaining.llama : limits.remaining.gemini;
-      const max = selectedModel === 'llama-4-hackclub' ? 6 : 4;
+      let current = 0;
+      let max = 0;
+      
+      if (selectedModel === 'llama-4-hackclub') {
+        current = limits.remaining.llama;
+        max = 6;
+      } else if (selectedModel === 'gemini-flash-2.5') {
+        current = limits.remaining.gemini;
+        max = 4;
+      } else if (selectedModel === 'deepseek-r1-free') {
+        current = limits.remaining.deepseek;
+        max = 4;
+      } else if (selectedModel === 'gpt-4.1-mini') {
+        current = limits.remaining.gpt41mini;
+        max = 3;
+      } else if (selectedModel === 'o3-mini') {
+        current = limits.remaining.o3mini;
+        max = 2;
+      }
+      
       return `${current}/${max}`;
     }
 
     return '—';
+  };
+
+  const handleSubmitButtonClick = () => {
+    if (!inputValue.trim() || isGenerating) return;
+    
+    // If user is not logged in and has reached guest limit, show login modal
+    if (!session) {
+      const guestCount = parseInt(localStorage.getItem('guest_guide_count') || '0');
+      if (guestCount >= 3) {
+        setIsPleaseLoginModalOpen(true);
+        return;
+      }
+    }
+    
+    // If user is logged in but has reached their limit, show premium modal
+    if (session && limits && isGenerationDisabled()) {
+      setIsPremiumModalOpen(true);
+      return;
+    }
+    
+    // Otherwise, proceed with normal submission
+    handleSubmit();
   };
 
   const isGenerationDisabled = () => {
@@ -205,7 +259,17 @@ export default function MobileLayout() {
     }
 
     if (limits) {
-      return selectedModel === 'llama-4-hackclub' ? limits.remaining.llama <= 0 : limits.remaining.gemini <= 0;
+      if (selectedModel === 'llama-4-hackclub') {
+        return limits.remaining.llama <= 0;
+      } else if (selectedModel === 'gemini-flash-2.5') {
+        return limits.remaining.gemini <= 0;
+      } else if (selectedModel === 'deepseek-r1-free') {
+        return limits.remaining.deepseek <= 0;
+      } else if (selectedModel === 'gpt-4.1-mini') {
+        return limits.remaining.gpt41mini <= 0;
+      } else if (selectedModel === 'o3-mini') {
+        return limits.remaining.o3mini <= 0;
+      }
     }
 
     return false;
@@ -237,7 +301,29 @@ export default function MobileLayout() {
               {!session ? (
                 `${Math.max(0, 3 - parseInt(localStorage.getItem('guest_guide_count') || '0'))}/3 left`
               ) : limits ? (
-                `${selectedModel === 'llama-4-hackclub' ? limits.remaining.llama : limits.remaining.gemini}/${selectedModel === 'llama-4-hackclub' ? 6 : 4} left`
+                (() => {
+                  let current = 0;
+                  let max = 0;
+                  
+                  if (selectedModel === 'llama-4-hackclub') {
+                    current = limits.remaining.llama;
+                    max = 6;
+                  } else if (selectedModel === 'gemini-flash-2.5') {
+                    current = limits.remaining.gemini;
+                    max = 4;
+                  } else if (selectedModel === 'deepseek-r1-free') {
+                    current = limits.remaining.deepseek;
+                    max = 4;
+                  } else if (selectedModel === 'gpt-4.1-mini') {
+                    current = limits.remaining.gpt41mini;
+                    max = 3;
+                  } else if (selectedModel === 'o3-mini') {
+                    current = limits.remaining.o3mini;
+                    max = 2;
+                  }
+                  
+                  return `${current}/${max} left`;
+                })()
               ) : (
                 '— left'
               )}
@@ -330,7 +416,7 @@ export default function MobileLayout() {
                     </Shimmer>
                     {isDropdownOpen && (<div className="absolute top-full mt-2 right-0 bg-[#272727] rounded-xl shadow-2xl border border-white/10 min-w-[200px] max-h-[200px] overflow-y-auto z-10 p-1">
                       {availableModels.map((model) => {
-                        const isDisabled = !session && model.id !== 'llama-4-hackclub';
+                        const isDisabled = !session && model.id !== 'llama-4-hackclub' && model.id !== 'deepseek-r1-free';
                         return (
                           <div
                             key={model.id}
@@ -359,9 +445,9 @@ export default function MobileLayout() {
                   </div>                  <div
                     className={`box p-2 rounded-xl cursor-pointer transition-colors ${!isGenerationDisabled()
                       ? 'bg-primary text-background hover:bg-primary/80'
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-600 text-gray-400 cursor-pointer'
                       }`}
-                    onClick={!isGenerationDisabled() ? handleSubmit : undefined}
+                    onClick={handleSubmitButtonClick}
                   >
                     {isGenerating ? (
                       <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -385,6 +471,12 @@ export default function MobileLayout() {
       <PleaseLogin
         isOpen={isPleaseLoginModalOpen}
         onClose={() => setIsPleaseLoginModalOpen(false)}
+      />
+
+      <PremiumUpgradeModal
+        isOpen={isPremiumModalOpen}
+        onClose={() => setIsPremiumModalOpen(false)}
+        currentModel={availableModels.find(m => m.id === selectedModel)?.name || selectedModel}
       />
     </div>
   );
