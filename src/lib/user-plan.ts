@@ -74,6 +74,23 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
 };
 
 export async function getUserPlan(userEmail: string): Promise<UserPlanDoc> {
+  // Special users get Pro+ automatically
+  const specialUsers = ['harshitkumar9030@gmail.com', 'mamtarani07275@gmail.com'];
+  const isSpecialUser = specialUsers.includes(userEmail);
+
+  if (isSpecialUser) {
+    return {
+      userEmail,
+      plan: 'proplus',
+      planStartDate: new Date(),
+      planEndDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+      stripeCustomerId: 'special_user',
+      stripeSubscriptionId: 'special_subscription',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
+
   const { db } = await connectToDatabase();
   const collection = db.collection<UserPlanDoc>('user_plans');
 

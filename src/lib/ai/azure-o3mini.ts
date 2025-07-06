@@ -44,7 +44,7 @@ export async function o3MiniCompletion(prompt: string) {
                     content: prompt
                 }
             ],
-            max_completion_tokens: 4000,
+            max_completion_tokens: 8000,
             model: modelName
         });
 
@@ -91,7 +91,7 @@ export async function o3MiniCompletionStream(prompt: string) {
                     content: prompt
                 }
             ],
-            max_completion_tokens: 4000,
+            max_completion_tokens: 8000,
             model: modelName,
             stream: true
         });

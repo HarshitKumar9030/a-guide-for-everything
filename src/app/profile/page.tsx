@@ -581,20 +581,20 @@ export default function ProfilePage() {
                             <h2 className="text-white text-2xl font-semibold">Quick Actions</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Link
-                                    href="/features"
+                                    href="/dashboard"
                                     className="bg-[#2A2A2A] rounded-2xl p-6 border border-[#323232] hover:border-primary/30 transition-colors group"
                                 >
                                     <div className="flex items-center gap-3 mb-3">
                                         <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
                                             <Crown className="w-5 h-5 text-primary" />
                                         </div>
-                                        <h3 className="text-white font-semibold">Premium Features</h3>
+                                        <h3 className="text-white font-semibold">Dashboard & Features</h3>
                                     </div>
                                     <p className="text-gray-400 text-sm mb-4">
-                                        Explore team sharing, advanced templates, and premium support
+                                        Access analytics, team sharing, templates, and premium features
                                     </p>
                                     <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
-                                        <span>Explore Features</span>
+                                        <span>Open Dashboard</span>
                                         <ArrowRight className="w-4 h-4 ml-1 group-hover:ml-0 transition-all" />
                                     </div>
                                 </Link>

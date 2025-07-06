@@ -23,6 +23,10 @@ export default function TeamSharing({ userPlan }: TeamSharingProps) {
   const [isInviting, setIsInviting] = useState(false);
   const [shareableLink, setShareableLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error' | 'info';
+    text: string;
+  } | null>(null);
 
   // Team sharing is only available for Pro+ users
   const hasTeamAccess = userPlan === 'proplus';
@@ -74,13 +78,14 @@ export default function TeamSharing({ userPlan }: TeamSharingProps) {
       if (response.ok) {
         setInviteEmail('');
         await loadTeamMembers();
+        showStatus('success', 'Invitation sent successfully!');
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to send invitation');
+        showStatus('error', error.message || 'Failed to send invitation');
       }
     } catch (error) {
       console.error('Error inviting member:', error);
-      alert('Failed to send invitation');
+      showStatus('error', 'Failed to send invitation');
     } finally {
       setIsInviting(false);
     }
@@ -96,9 +101,11 @@ export default function TeamSharing({ userPlan }: TeamSharingProps) {
 
       if (response.ok) {
         await loadTeamMembers();
+        showStatus('success', 'Member removed successfully!');
       }
     } catch (error) {
       console.error('Error removing member:', error);
+      showStatus('error', 'Failed to remove member');
     }
   };
 
@@ -107,9 +114,17 @@ export default function TeamSharing({ userPlan }: TeamSharingProps) {
       await navigator.clipboard.writeText(shareableLink);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
+      showStatus('success', 'Link copied to clipboard!');
     } catch (error) {
       console.error('Error copying link:', error);
+      showStatus('error', 'Failed to copy link');
     }
+  };
+
+  // Helper function to show status messages
+  const showStatus = (type: 'success' | 'error' | 'info', text: string) => {
+    setStatusMessage({ type, text });
+    setTimeout(() => setStatusMessage(null), 5000);
   };
 
   if (!hasTeamAccess) {
@@ -139,6 +154,15 @@ export default function TeamSharing({ userPlan }: TeamSharingProps) {
         <Users className="w-6 h-6 text-primary" />
         <h3 className="text-white text-xl font-semibold">Team Sharing</h3>
       </div>
+
+      {/* Status Message */}
+      {statusMessage && (
+        <div className={`mb-4 p-4 rounded-xl border-l-4 ${statusMessage.type === 'success' ? 'bg-green-500/10 border-green-500' : 'bg-red-500/10 border-red-500'}`}>
+          <p className={`text-sm ${statusMessage.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+            {statusMessage.text}
+          </p>
+        </div>
+      )}
 
       {/* Invite Member */}
       <form onSubmit={inviteMember} className="mb-6">

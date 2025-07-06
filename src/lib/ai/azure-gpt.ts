@@ -31,7 +31,7 @@ export async function gpt41MiniCompletion(prompt: string) {
                     content: prompt
                 }
             ],
-            max_completion_tokens: 4000,
+            max_completion_tokens: 10000,
             temperature: 0.7,
             top_p: 0.9,
             frequency_penalty: 0,
@@ -79,7 +79,7 @@ export async function gpt41MiniCompletionStream(prompt: string) {
                     content: prompt
                 }
             ],
-            max_completion_tokens: 4000,
+            max_completion_tokens: 10000,
             temperature: 0.7,
             top_p: 0.9,
             frequency_penalty: 0,

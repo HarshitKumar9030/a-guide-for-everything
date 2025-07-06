@@ -1,7 +1,7 @@
 import { AzureOpenAI } from 'openai';
 
-const endpoint = process.env.AZURE_GPT41_ENDPOINT;
-const apiKey = process.env.AZURE_GPT41_API_KEY;
+const endpoint = process.env.AZURE_O3_ENDPOINT;
+const apiKey = process.env.AZURE_API_KEY;
 const modelName = "gpt-4.1";
 const deployment = "gpt-4.1";
 const apiVersion = "2024-04-01-preview";
@@ -28,7 +28,7 @@ function cleanGPT41Output(content: string): string {
 
 export async function gpt41Completion(prompt: string) {
     try {
-        if (!process.env.AZURE_GPT41_API_KEY || !process.env.AZURE_GPT41_ENDPOINT) {
+        if (!process.env.AZURE_API_KEY || !process.env.AZURE_O3_ENDPOINT) {
             throw new Error('Azure GPT-4.1 credentials are not configured');
         }
 
@@ -43,7 +43,7 @@ export async function gpt41Completion(prompt: string) {
                     content: prompt
                 }
             ],
-            max_completion_tokens: 4000,
+            max_completion_tokens: 10000,
             temperature: 0.7,
             top_p: 0.9,
             frequency_penalty: 0,
@@ -94,7 +94,7 @@ export async function gpt41CompletionStream(prompt: string) {
                     content: prompt
                 }
             ],
-            max_completion_tokens: 4000,
+            max_completion_tokens: 10000,
             temperature: 0.7,
             top_p: 0.9,
             frequency_penalty: 0,
