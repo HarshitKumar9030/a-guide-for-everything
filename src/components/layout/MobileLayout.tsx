@@ -20,9 +20,10 @@ const useUserLimits = () => {
     llamaGuides: number;
     geminiGuides: number;
     deepseekGuides: number;
+    gpt41Guides: number;
     gpt41miniGuides: number;
     o3miniGuides: number;
-    remaining: { llama: number; gemini: number; deepseek: number; gpt41mini: number; o3mini: number };
+    remaining: { llama: number; gemini: number; deepseek: number; gpt41: number; gpt41mini: number; o3mini: number };
     guestRemaining?: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,9 +37,10 @@ const useUserLimits = () => {
         llamaGuides: 0,
         geminiGuides: 0,
         deepseekGuides: 0,
+        gpt41Guides: 0,
         gpt41miniGuides: 0,
         o3miniGuides: 0,
-        remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41mini: 0, o3mini: 0 },
+        remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41: 0, gpt41mini: 0, o3mini: 0 },
         guestRemaining: Math.max(0, 3 - guestCount)
       });
       return;
@@ -123,6 +125,7 @@ export default function MobileLayout() {
         return;
       }
 
+      // Ensure guests can only use Llama or DeepSeek
       // Ensure guests can only use Llama or DeepSeek
       if (selectedModel !== 'llama-4-hackclub' && selectedModel !== 'deepseek-r1-free') {
         setSelectedModel('llama-4-hackclub');
@@ -214,6 +217,9 @@ export default function MobileLayout() {
       } else if (selectedModel === 'deepseek-r1-free') {
         current = limits.remaining.deepseek;
         max = 4;
+      } else if (selectedModel === 'gpt-4.1') {
+        current = limits.remaining.gpt41;
+        max = 3;
       } else if (selectedModel === 'gpt-4.1-mini') {
         current = limits.remaining.gpt41mini;
         max = 3;
@@ -265,6 +271,8 @@ export default function MobileLayout() {
         return limits.remaining.gemini <= 0;
       } else if (selectedModel === 'deepseek-r1-free') {
         return limits.remaining.deepseek <= 0;
+      } else if (selectedModel === 'gpt-4.1') {
+        return limits.remaining.gpt41 <= 0;
       } else if (selectedModel === 'gpt-4.1-mini') {
         return limits.remaining.gpt41mini <= 0;
       } else if (selectedModel === 'o3-mini') {
@@ -314,6 +322,9 @@ export default function MobileLayout() {
                   } else if (selectedModel === 'deepseek-r1-free') {
                     current = limits.remaining.deepseek;
                     max = 4;
+                  } else if (selectedModel === 'gpt-4.1') {
+                    current = limits.remaining.gpt41;
+                    max = 3;
                   } else if (selectedModel === 'gpt-4.1-mini') {
                     current = limits.remaining.gpt41mini;
                     max = 3;

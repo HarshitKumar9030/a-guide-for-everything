@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Crown, ArrowRight, Sparkles } from 'lucide-react';
 import AvatarUpload from '@/components/core/AvatarUpload';
 import ConfirmModal from '@/components/core/ConfirmModal';
 import ErrorModal from '@/components/core/ErrorModal';
@@ -29,11 +29,23 @@ export default function ProfilePage() {
         llamaGuides: number;
         geminiGuides: number;
         deepseekGuides: number;
+        gpt41Guides: number;
         gpt41miniGuides: number;
         o3miniGuides: number;
-        remaining: { llama: number; gemini: number; deepseek: number; gpt41mini: number; o3mini: number };
-        limits: { llamaMax: number; geminiMax: number; deepseekMax: number; gpt41miniMax: number; o3miniMax: number };
-    } | null>(null);    // Delete account modal state
+        remaining: { llama: number; gemini: number; deepseek: number; gpt41: number; gpt41mini: number; o3mini: number };
+        limits: { llamaMax: number; geminiMax: number; deepseekMax: number; gpt41Max: number; gpt41miniMax: number; o3miniMax: number };
+    } | null>(null);
+
+    // Subscription state
+    const [subscription, setSubscription] = useState<{
+        plan: string;
+        period: string;
+        status: string;
+        currentPeriodEnd: string;
+        stripeCustomerId?: string;
+    } | null>(null);
+
+    // Delete account modal state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -62,19 +74,28 @@ export default function ProfilePage() {
         if (status === 'unauthenticated') {
             router.push('/auth/signin');
         }
-    }, [status, router]); useEffect(() => {
+    }, [status, router]);    useEffect(() => {
         // Check export cooldown and fetch user limits on mount and update every minute
         const checkCooldownAndLimits = async () => {
             if (!session?.user?.email) return;
 
             try {
-                const response = await fetch('/api/user/limits');
-                if (response.ok) {
-                    const data = await response.json();
-                    const timeRemaining = getTimeUntilNextExport(data.lastExport);
+                const [limitsResponse, subscriptionResponse] = await Promise.all([
+                    fetch('/api/user/limits'),
+                    fetch('/api/user/subscription')
+                ]);
+
+                if (limitsResponse.ok) {
+                    const limitsData = await limitsResponse.json();
+                    const timeRemaining = getTimeUntilNextExport(limitsData.lastExport);
                     setExportCooldown(timeRemaining);
                     setCanExport(timeRemaining === 0);
-                    setUserLimits(data);
+                    setUserLimits(limitsData);
+                }
+
+                if (subscriptionResponse.ok) {
+                    const subscriptionData = await subscriptionResponse.json();
+                    setSubscription(subscriptionData.subscription);
                 }
             } catch (error) {
                 console.error('Error checking export cooldown and limits:', error);
@@ -318,6 +339,80 @@ export default function ProfilePage() {
                             <p className="text-white text-2xl">
                                 Your Login Provider is <span className="text-primary">{provider}</span>
                             </p>
+                        </div>
+
+                        {/* Subscription Information */}
+                        <div className="pt-8 space-y-4">
+                            <h2 className="text-white text-2xl font-semibold">Subscription</h2>
+                            {subscription ? (
+                                <div className="bg-[#2A2A2A] rounded-2xl p-6 border border-[#323232]">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <p className="text-gray-400 text-sm">Current Plan</p>
+                                            <p className="text-white text-lg font-semibold capitalize">
+                                                {subscription.plan}
+                                                {subscription.plan !== 'free' && (
+                                                    <span className="ml-2 px-2 py-1 bg-primary/20 text-primary text-xs rounded-full">
+                                                        {subscription.period}
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 text-sm">Status</p>
+                                            <p className={`text-lg font-semibold capitalize ${
+                                                subscription.status === 'active' ? 'text-green-400' :
+                                                subscription.status === 'past_due' ? 'text-yellow-400' :
+                                                subscription.status === 'canceled' ? 'text-red-400' :
+                                                'text-gray-400'
+                                            }`}>
+                                                {subscription.status}
+                                            </p>
+                                        </div>
+                                        {subscription.currentPeriodEnd && subscription.plan !== 'free' && (
+                                            <div>
+                                                <p className="text-gray-400 text-sm">
+                                                    {subscription.status === 'canceled' ? 'Access Ends' : 'Renewal Date'}
+                                                </p>
+                                                <p className="text-white text-lg">
+                                                    {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {subscription.stripeCustomerId && (
+                                            <div>
+                                                <p className="text-gray-400 text-sm">Customer ID</p>
+                                                <p className="text-white text-sm font-mono">
+                                                    {subscription.stripeCustomerId}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {subscription.plan === 'free' && (
+                                        <div className="mt-6 pt-6 border-t border-[#323232]">
+                                            <Link
+                                                href="/pricing"
+                                                className="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary/80 text-black font-semibold rounded-xl transition-colors"
+                                            >
+                                                Upgrade Plan
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="bg-[#2A2A2A] rounded-2xl p-6 border border-[#323232]">
+                                    <p className="text-white text-lg">Free Plan</p>
+                                    <p className="text-gray-400 text-sm mt-2">
+                                        You&apos;re currently on the free plan with limited access.
+                                    </p>
+                                    <Link
+                                        href="/pricing"
+                                        className="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary/80 text-black font-semibold rounded-xl transition-colors mt-4"
+                                    >
+                                        Upgrade Plan
+                                    </Link>
+                                </div>
+                            )}
                         </div>                        {userLimits && (
                             <div className="pt-8">
                                 <div 
@@ -372,6 +467,20 @@ export default function ProfilePage() {
                                                 <div
                                                     className="bg-green-500 h-2 rounded-full transition-all duration-500 ease-out"
                                                     style={{ width: `${(userLimits.deepseekGuides / userLimits.limits.deepseekMax) * 100}%` }}
+                                                ></div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-300">GPT-4.1 Guides:</span>
+                                                <span className="text-white font-medium">
+                                                    {userLimits.gpt41Guides}/{userLimits.limits.gpt41Max}
+                                                    <span className="text-gray-400 ml-2">({userLimits.remaining.gpt41} left)</span>
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-background/90 rounded-full h-2">
+                                                <div
+                                                    className="bg-blue-500 h-2 rounded-full transition-all duration-500 ease-out"
+                                                    style={{ width: `${(userLimits.gpt41Guides / userLimits.limits.gpt41Max) * 100}%` }}
                                                 ></div>
                                             </div>
 
@@ -465,8 +574,51 @@ export default function ProfilePage() {
                             currentAvatar={avatar}
                             onAvatarUpdate={handleAvatarUpdate}
                             size={220}
-                        />
-                    </div>
+                        />                        </div>
+
+                        {/* Quick Links */}
+                        <div className="pt-8 space-y-4">
+                            <h2 className="text-white text-2xl font-semibold">Quick Actions</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Link
+                                    href="/features"
+                                    className="bg-[#2A2A2A] rounded-2xl p-6 border border-[#323232] hover:border-primary/30 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+                                            <Crown className="w-5 h-5 text-primary" />
+                                        </div>
+                                        <h3 className="text-white font-semibold">Premium Features</h3>
+                                    </div>
+                                    <p className="text-gray-400 text-sm mb-4">
+                                        Explore team sharing, advanced templates, and premium support
+                                    </p>
+                                    <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
+                                        <span>Explore Features</span>
+                                        <ArrowRight className="w-4 h-4 ml-1 group-hover:ml-0 transition-all" />
+                                    </div>
+                                </Link>
+                                
+                                <Link
+                                    href="/pricing"
+                                    className="bg-[#2A2A2A] rounded-2xl p-6 border border-[#323232] hover:border-primary/30 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+                                            <Sparkles className="w-5 h-5 text-primary" />
+                                        </div>
+                                        <h3 className="text-white font-semibold">Upgrade Plan</h3>
+                                    </div>
+                                    <p className="text-gray-400 text-sm mb-4">
+                                        View pricing plans and upgrade your subscription
+                                    </p>
+                                    <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
+                                        <span>View Pricing</span>
+                                        <ArrowRight className="w-4 h-4 ml-1 group-hover:ml-0 transition-all" />
+                                    </div>
+                                </Link>
+                            </div>
+                        </div>
 
                     <div className="mt-8">
                         <div className="flex items-center mb-4">

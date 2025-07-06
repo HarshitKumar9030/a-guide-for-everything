@@ -1,0 +1,28 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Generate a shareable link for team collaboration
+    const shareLink = `${process.env.NEXTAUTH_URL}/team/join/${session.user.id}?token=${generateShareToken()}`;
+
+    return NextResponse.json({ link: shareLink });
+  } catch (error) {
+    console.error('Error generating share link:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate share link' },
+      { status: 500 }
+    );
+  }
+}
+
+function generateShareToken(): string {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}

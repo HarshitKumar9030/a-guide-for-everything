@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
-import { User, LogOut, BookMarked, X, Search } from 'lucide-react';
+import { User, LogOut, BookMarked, X, Search, Crown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/core/Avatar';
 
@@ -146,6 +146,17 @@ export default function NavBar() {
                                                 <Link href="/search" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
                                                     <Search className="mr-3" size={20} />
                                                     <span>Search Guides</span>
+                                                </Link>
+                                            </motion.div>
+
+                                            <motion.div
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.175 }}
+                                            >
+                                                <Link href="/features" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
+                                                    <Crown className="mr-3" size={20} />
+                                                    <span>Features</span>
                                                 </Link>
                                             </motion.div>
 

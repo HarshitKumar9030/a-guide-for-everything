@@ -15,12 +15,13 @@ import { useGuide } from '@/contexts/GuideContext';
 import { GuideStorage } from '@/lib/guide-storage';
 
 // Export the model type and available models
-export type ModelType = 'gemini-flash-2.5' | 'llama-4-hackclub' | 'deepseek-r1-free' | 'gpt-4.1-mini' | 'o3-mini';
+export type ModelType = 'gemini-flash-2.5' | 'llama-4-hackclub' | 'deepseek-r1-free' | 'gpt-4.1' | 'gpt-4.1-mini' | 'o3-mini';
 
 export const availableModels = [
     { id: 'gemini-flash-2.5' as ModelType, name: 'Gemini Flash 2.5', provider: 'Google' },
     { id: 'llama-4-hackclub' as ModelType, name: 'Llama 4', provider: 'HackClub' },
     { id: 'deepseek-r1-free' as ModelType, name: 'DeepSeek R1', provider: 'OpenRouter' },
+    { id: 'gpt-4.1' as ModelType, name: 'GPT-4.1', provider: 'Azure OpenAI' },
     { id: 'gpt-4.1-mini' as ModelType, name: 'GPT-4.1 Mini', provider: 'Azure OpenAI' },
     { id: 'o3-mini' as ModelType, name: 'O3 Mini', provider: 'Azure OpenAI' }
 ];
@@ -33,9 +34,10 @@ const useUserLimits = () => {
         llamaGuides: number;
         geminiGuides: number;
         deepseekGuides: number;
+        gpt41Guides: number;
         gpt41miniGuides: number;
         o3miniGuides: number;
-        remaining: { llama: number; gemini: number; deepseek: number; gpt41mini: number; o3mini: number };
+        remaining: { llama: number; gemini: number; deepseek: number; gpt41: number; gpt41mini: number; o3mini: number };
         guestRemaining?: number;
     } | null>(null);
     const [loading, setLoading] = useState(false);
@@ -48,9 +50,10 @@ const useUserLimits = () => {
                 llamaGuides: 0,
                 geminiGuides: 0,
                 deepseekGuides: 0,
+                gpt41Guides: 0,
                 gpt41miniGuides: 0,
                 o3miniGuides: 0,
-                remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41mini: 0, o3mini: 0 },
+                remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41: 0, gpt41mini: 0, o3mini: 0 },
                 guestRemaining: Math.max(0, 3 - guestCount)
             });
             return;
@@ -150,10 +153,11 @@ export default function DesktopLayout() {
                 return;
             }
 
-            if (selectedModel !== 'llama-4-hackclub' && selectedModel !== 'deepseek-r1-free') {
-                setSelectedModel('llama-4-hackclub');
-                updateSelectedModel('llama-4-hackclub');
-            }
+        // Ensure guests can only use Llama or DeepSeek
+        if (selectedModel !== 'llama-4-hackclub' && selectedModel !== 'deepseek-r1-free') {
+            setSelectedModel('llama-4-hackclub');
+            updateSelectedModel('llama-4-hackclub');
+        }
         } else {
             // Check if user has reached their limit for the selected model
             if (limits && isGenerationDisabled()) {
@@ -236,6 +240,9 @@ export default function DesktopLayout() {
             } else if (selectedModel === 'deepseek-r1-free') {
                 current = limits.remaining.deepseek;
                 max = 4;
+            } else if (selectedModel === 'gpt-4.1') {
+                current = limits.remaining.gpt41;
+                max = 3;
             } else if (selectedModel === 'gpt-4.1-mini') {
                 current = limits.remaining.gpt41mini;
                 max = 3;
@@ -265,6 +272,8 @@ export default function DesktopLayout() {
                 return limits.remaining.gemini <= 0;
             } else if (selectedModel === 'deepseek-r1-free') {
                 return limits.remaining.deepseek <= 0;
+            } else if (selectedModel === 'gpt-4.1') {
+                return limits.remaining.gpt41 <= 0;
             } else if (selectedModel === 'gpt-4.1-mini') {
                 return limits.remaining.gpt41mini <= 0;
             } else if (selectedModel === 'o3-mini') {
@@ -363,10 +372,14 @@ export default function DesktopLayout() {
                                         current = limits.remaining.deepseek;
                                         max = 4;
                                         modelName = 'DeepSeek';
+                                    } else if (selectedModel === 'gpt-4.1') {
+                                        current = limits.remaining.gpt41;
+                                        max = 3;
+                                        modelName = 'GPT-4.1';
                                     } else if (selectedModel === 'gpt-4.1-mini') {
                                         current = limits.remaining.gpt41mini;
                                         max = 3;
-                                        modelName = 'GPT-4.1';
+                                        modelName = 'GPT-4.1 Mini';
                                     } else if (selectedModel === 'o3-mini') {
                                         current = limits.remaining.o3mini;
                                         max = 2;

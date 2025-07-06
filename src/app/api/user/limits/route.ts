@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getUserLimits } from '@/lib/user-limits';
-import { RATE_LIMITS } from '@/lib/rate-limit';
+import { getUserPlan, getPlanLimits } from '@/lib/user-plan';
 
 export async function GET() {
   try {
@@ -16,29 +16,39 @@ export async function GET() {
     }
 
     const userLimits = await getUserLimits(session.user.email);
+    const userPlan = await getUserPlan(session.user.email);
+    const planLimits = getPlanLimits(userPlan.plan);
+
+    const maxLimits = {
+      llamaMax: planLimits.llama === -1 ? 999999 : planLimits.llama,
+      geminiMax: planLimits.gemini === -1 ? 999999 : planLimits.gemini,
+      deepseekMax: planLimits.deepseek === -1 ? 999999 : planLimits.deepseek,
+      gpt41Max: planLimits.gpt41 === -1 ? 999999 : planLimits.gpt41,
+      gpt41miniMax: planLimits.gpt41mini === -1 ? 999999 : planLimits.gpt41mini,
+      o3miniMax: planLimits.o3mini === -1 ? 999999 : planLimits.o3mini,
+      exportCooldown: planLimits.exportCooldownHours * 60 * 60 * 1000,
+    };
+
+    const remaining = {
+      llama: planLimits.llama === -1 ? 999999 : Math.max(0, planLimits.llama - userLimits.llamaGuides),
+      gemini: planLimits.gemini === -1 ? 999999 : Math.max(0, planLimits.gemini - userLimits.geminiGuides),
+      deepseek: planLimits.deepseek === -1 ? 999999 : Math.max(0, planLimits.deepseek - userLimits.deepseekGuides),
+      gpt41: planLimits.gpt41 === -1 ? 999999 : Math.max(0, planLimits.gpt41 - userLimits.gpt41Guides),
+      gpt41mini: planLimits.gpt41mini === -1 ? 999999 : Math.max(0, planLimits.gpt41mini - userLimits.gpt41miniGuides),
+      o3mini: planLimits.o3mini === -1 ? 999999 : Math.max(0, planLimits.o3mini - (userLimits.o3miniGuides || 0)),
+    };
 
     return NextResponse.json({
       llamaGuides: userLimits.llamaGuides,
       geminiGuides: userLimits.geminiGuides,
       deepseekGuides: userLimits.deepseekGuides,
+      gpt41Guides: userLimits.gpt41Guides,
       gpt41miniGuides: userLimits.gpt41miniGuides,
       o3miniGuides: userLimits.o3miniGuides || 0,
       lastExport: userLimits.lastExport,
-      limits: {
-        llamaMax: RATE_LIMITS.USER_LLAMA_LIMIT,
-        geminiMax: RATE_LIMITS.USER_GEMINI_LIMIT,
-        deepseekMax: RATE_LIMITS.USER_DEEPSEEK_LIMIT,
-        gpt41miniMax: RATE_LIMITS.USER_GPT41MINI_LIMIT,
-        o3miniMax: RATE_LIMITS.USER_O3MINI_LIMIT,
-        exportCooldown: RATE_LIMITS.EXPORT_COOLDOWN,
-      },
-      remaining: {
-        llama: RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides,
-        gemini: RATE_LIMITS.USER_GEMINI_LIMIT - userLimits.geminiGuides,
-        deepseek: RATE_LIMITS.USER_DEEPSEEK_LIMIT - userLimits.deepseekGuides,
-        gpt41mini: RATE_LIMITS.USER_GPT41MINI_LIMIT - userLimits.gpt41miniGuides,
-        o3mini: RATE_LIMITS.USER_O3MINI_LIMIT - (userLimits.o3miniGuides || 0),
-      }
+      plan: userPlan.plan,
+      limits: maxLimits,
+      remaining: remaining
     });
 
   } catch (error) {

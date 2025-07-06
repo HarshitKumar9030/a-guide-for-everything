@@ -47,12 +47,17 @@ export default function PremiumUpgradeModal({
         {
             icon: <Sparkles className="w-5 h-5" />,
             title: "Premium AI Models",
-            description: "Access to advanced models like GPT-4, O3 Mini, and more"
+            description: "Access GPT-4.1, O3 Mini, and other cutting-edge models"
         },
         {
             icon: <Zap className="w-5 h-5" />,
-            title: "Faster Generations",
-            description: "Priority processing for quicker response times"
+            title: "Higher Limits",
+            description: "Generate more guides with Pro (20+ daily) or Pro+ (unlimited)"
+        },
+        {
+            icon: <Crown className="w-5 h-5" />,
+            title: "Priority Processing",
+            description: "Skip the queue with faster generation times"
         }
     ];
 
@@ -111,10 +116,13 @@ export default function PremiumUpgradeModal({
                                 className="mb-6"
                             >
                                 <h2 className="text-white text-2xl font-bold mb-2">
-                                    Upgrade to Premium
+                                    Upgrade to Pro or Pro+
                                 </h2>
                                 <p className="text-white/70 text-sm">
-                                    You&apos;ve reached your limit for <span className="text-primary font-medium">{currentModel}</span>
+                                    {currentModel.includes('GPT-4.1') || currentModel.includes('O3') 
+                                        ? `${currentModel} requires a premium subscription`
+                                        : `You've reached your limit for ${currentModel}. Upgrade for more guides.`
+                                    }
                                 </p>
                             </motion.div>
                             

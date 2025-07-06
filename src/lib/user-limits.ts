@@ -5,6 +5,7 @@ export interface UserLimitDoc {
   llamaGuides: number;
   geminiGuides: number;
   deepseekGuides: number;
+  gpt41Guides: number;
   gpt41miniGuides: number;
   o3miniGuides: number;
   lastExport: number;
@@ -24,6 +25,7 @@ export async function getUserLimits(userEmail: string): Promise<UserLimitDoc> {
       llamaGuides: 0,
       geminiGuides: 0,
       deepseekGuides: 0,
+      gpt41Guides: 0,
       gpt41miniGuides: 0,
       o3miniGuides: 0,
       lastExport: 0,
@@ -37,6 +39,7 @@ export async function getUserLimits(userEmail: string): Promise<UserLimitDoc> {
 
   const fieldsToCheck = {
     deepseekGuides: 0,
+    gpt41Guides: 0,
     gpt41miniGuides: 0,
     o3miniGuides: 0
   };
@@ -75,6 +78,8 @@ export async function incrementGuideCount(userEmail: string, model: string): Pro
     updateField = 'geminiGuides';
   } else if (model === 'deepseek') {
     updateField = 'deepseekGuides';
+  } else if (model === 'gpt41') {
+    updateField = 'gpt41Guides';
   } else if (model === 'gpt41mini') {
     updateField = 'gpt41miniGuides';
   } else if (model === 'o3mini') {

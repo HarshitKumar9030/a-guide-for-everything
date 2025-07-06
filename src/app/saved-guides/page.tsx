@@ -202,9 +202,9 @@ export default function SavedGuidesPage() {
                             <h1 className="text-white font-just-another-hand text-[96px] md:text-[128px] leading-none mb-4">
                                 Saved Guides
                             </h1>
-                            <p className="text-white/60 text-xl max-w-2xl">
+                            {/* <p className="text-white/60 text-xl max-w-2xl">
                                 Loading your saved guides...
-                            </p>
+                            </p> */}
                         </div>
 
                         <div className="text-center py-20">

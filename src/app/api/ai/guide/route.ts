@@ -5,11 +5,12 @@ import { geminiCompletion } from '@/lib/ai/gemini';
 import { aiCompletion } from '@/lib/ai/hackclub';
 import { deepseekCompletion } from '@/lib/ai/deepseek';
 import { gpt41MiniCompletion } from '@/lib/ai/azure-gpt';
+import { gpt41Completion } from '@/lib/ai/azure-gpt41';
 import { o3MiniCompletion } from '@/lib/ai/azure-o3mini';
 import { getUserLimits, incrementGuideCount } from '@/lib/user-limits';
 import { getGuestLimits, incrementGuestGuideCount, getClientIP } from '@/lib/guest-limits';
-import { checkUserGuideLimit, checkGuestGuideLimit, RATE_LIMITS } from '@/lib/rate-limit';
-
+import { checkGuestGuideLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { getUserPlan, checkModelAccess, checkGenerationLimit, getPlanLimits } from '@/lib/user-plan';
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -36,51 +37,64 @@ export async function POST(req: NextRequest) {
       normalizedModel = 'llama';
     } else if (model === 'deepseek-r1-free' || model === 'deepseek') {
       normalizedModel = 'deepseek';
+    } else if (model === 'gpt-4.1' || model === 'gpt41') {
+      normalizedModel = 'gpt41';
     } else if (model === 'gpt-4.1-mini' || model === 'gpt41mini') {
       normalizedModel = 'gpt41mini';
     } else if (model === 'o3-mini' || model === 'o3mini') {
       normalizedModel = 'o3mini';
     } else {
       return NextResponse.json(
-        { error: 'Invalid model specified. Use "gemini", "llama", "deepseek", "gpt41mini", or "o3mini".' },
+        { error: 'Invalid model specified. Use "gemini", "llama", "deepseek", "gpt41", "gpt41mini", or "o3mini".' },
         { status: 400 }
       );
     }
 
     if (session?.user?.email) {
       const userLimits = await getUserLimits(session.user.email);
+      const userPlan = await getUserPlan(session.user.email);
       
-      if (!checkUserGuideLimit(normalizedModel, {
-        llamaGuides: userLimits.llamaGuides,
-        geminiGuides: userLimits.geminiGuides,
-        deepseekGuides: userLimits.deepseekGuides,
-        gpt41miniGuides: userLimits.gpt41miniGuides,
-        o3miniGuides: userLimits.o3miniGuides,
-        lastExport: userLimits.lastExport
-      })) {
-        let remaining = 0;
-        let remainingModel = '';
-        
-        if (normalizedModel === 'llama') {
-          remaining = RATE_LIMITS.USER_GEMINI_LIMIT - userLimits.geminiGuides;
-          remainingModel = 'Gemini';
-        } else if (normalizedModel === 'gemini') {
-          remaining = RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides;
-          remainingModel = 'Llama';
-        } else if (normalizedModel === 'deepseek') {
-          remaining = RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides;
-          remainingModel = 'Llama';
-        } else if (normalizedModel === 'gpt41mini') {
-          remaining = RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides;
-          remainingModel = 'Llama';
-        } else if (normalizedModel === 'o3mini') {
-          remaining = RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides;
-          remainingModel = 'Llama';
-        }
+      // Check if user has access to the requested model
+      if (!checkModelAccess(userPlan.plan, normalizedModel)) {
+        return NextResponse.json(
+          { 
+            error: `This model is not available on your ${userPlan.plan} plan. Please upgrade to access premium models.` 
+          },
+          { status: 403 }
+        );
+      }
+      
+      // Get current usage count for the model
+      let currentCount = 0;
+      switch (normalizedModel) {
+        case 'llama':
+          currentCount = userLimits.llamaGuides;
+          break;
+        case 'gemini':
+          currentCount = userLimits.geminiGuides;
+          break;
+        case 'deepseek':
+          currentCount = userLimits.deepseekGuides;
+          break;
+        case 'gpt41':
+          currentCount = userLimits.gpt41Guides;
+          break;
+        case 'gpt41mini':
+          currentCount = userLimits.gpt41miniGuides;
+          break;
+        case 'o3mini':
+          currentCount = userLimits.o3miniGuides;
+          break;
+      }
+      
+      // Check if user has reached their generation limit
+      if (!checkGenerationLimit(userPlan.plan, normalizedModel, currentCount)) {
+        const planLimits = getPlanLimits(userPlan.plan);
+        const modelLimit = planLimits[normalizedModel as keyof typeof planLimits];
         
         return NextResponse.json(
           { 
-            error: `You have reached your ${normalizedModel} guide limit. You have ${remaining} guides remaining for ${remainingModel}.` 
+            error: `You have reached your ${normalizedModel} guide limit (${modelLimit} guides). Please upgrade your plan for more generations.` 
           },
           { status: 429 }
         );
@@ -90,17 +104,22 @@ export async function POST(req: NextRequest) {
       
       await incrementGuideCount(session.user.email, normalizedModel);
 
+      // Calculate remaining counts based on plan limits
+      const planLimits = getPlanLimits(userPlan.plan);
+      const remaining = {
+        llama: planLimits.llama === -1 ? 999999 : Math.max(0, planLimits.llama - userLimits.llamaGuides - (normalizedModel === 'llama' ? 1 : 0)),
+        gemini: planLimits.gemini === -1 ? 999999 : Math.max(0, planLimits.gemini - userLimits.geminiGuides - (normalizedModel === 'gemini' ? 1 : 0)),
+        deepseek: planLimits.deepseek === -1 ? 999999 : Math.max(0, planLimits.deepseek - userLimits.deepseekGuides - (normalizedModel === 'deepseek' ? 1 : 0)),
+        gpt41: planLimits.gpt41 === -1 ? 999999 : Math.max(0, planLimits.gpt41 - userLimits.gpt41Guides - (normalizedModel === 'gpt41' ? 1 : 0)),
+        gpt41mini: planLimits.gpt41mini === -1 ? 999999 : Math.max(0, planLimits.gpt41mini - userLimits.gpt41miniGuides - (normalizedModel === 'gpt41mini' ? 1 : 0)),
+        o3mini: planLimits.o3mini === -1 ? 999999 : Math.max(0, planLimits.o3mini - userLimits.o3miniGuides - (normalizedModel === 'o3mini' ? 1 : 0))
+      };
+
       return NextResponse.json({
         ...result,
         user: session.user.email,
         originalPrompt: prompt,
-        remaining: {
-          llama: RATE_LIMITS.USER_LLAMA_LIMIT - userLimits.llamaGuides - (normalizedModel === 'llama' ? 1 : 0),
-          gemini: RATE_LIMITS.USER_GEMINI_LIMIT - userLimits.geminiGuides - (normalizedModel === 'gemini' ? 1 : 0),
-          deepseek: RATE_LIMITS.USER_DEEPSEEK_LIMIT - userLimits.deepseekGuides - (normalizedModel === 'deepseek' ? 1 : 0),
-          gpt41mini: RATE_LIMITS.USER_GPT41MINI_LIMIT - userLimits.gpt41miniGuides - (normalizedModel === 'gpt41mini' ? 1 : 0),
-          o3mini: RATE_LIMITS.USER_O3MINI_LIMIT - userLimits.o3miniGuides - (normalizedModel === 'o3mini' ? 1 : 0)
-        }
+        remaining: remaining
       });
 
     } else {
@@ -185,6 +204,14 @@ Generate a complete guide that someone could actually use to achieve their goal.
     };
   } else if (model === 'deepseek') {
     const result = await deepseekCompletion(enhancedPrompt);
+    return {
+      guide: result.content,
+      model: result.model,
+      timestamp: result.timestamp,
+      tokens: result.tokens
+    };
+  } else if (model === 'gpt41') {
+    const result = await gpt41Completion(enhancedPrompt);
     return {
       guide: result.content,
       model: result.model,
