@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { geminiCompletion } from '@/lib/ai/gemini';
+import { checkAndIncrementUsage } from '@/lib/usage';
+import { getUserPlan, checkModelAccess } from '@/lib/user-plan';
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,13 +36,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Plan & usage enforcement
+    const planDoc = await getUserPlan(session.user.email!);
+    const model = 'gemini';
+    if (!checkModelAccess(planDoc.plan, model)) {
+      return NextResponse.json({ error: 'Model not available on your plan' }, { status: 403 });
+    }
+    const usageCheck = await checkAndIncrementUsage(session.user.email!, model);
+    if (!usageCheck.allowed) {
+      return NextResponse.json({ error: usageCheck.reason }, { status: 429 });
+    }
+
     const result = await geminiCompletion(prompt);
 
     return NextResponse.json({
       response: result.content,
       model: result.model,
       timestamp: result.timestamp,
-      user: session.user.email 
+      user: session.user.email,
+      plan: planDoc.plan,
+      remaining: usageCheck.remaining
     });
 
   } catch (error) {

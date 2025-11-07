@@ -22,10 +22,8 @@ export interface PlanLimits {
   o3mini: number;
   exportCooldownHours: number;
   hasAdvancedModels: boolean;
-  hasTeamSharing: boolean;
-  hasAdvancedTemplates: boolean;
-  hasEarlyAccess: boolean;
-  supportLevel: 'none' | 'email' | 'priority' | 'live';
+  // Premium collaboration features removed; keep minimal flags
+  supportLevel: 'none' | 'email' | 'live';
 }
 
 export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
@@ -38,9 +36,6 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     o3mini: 0,    // Disabled for free users
     exportCooldownHours: 6,
     hasAdvancedModels: false,
-    hasTeamSharing: false,
-    hasAdvancedTemplates: false,
-    hasEarlyAccess: false,
     supportLevel: 'none'
   },
   pro: {
@@ -52,9 +47,6 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     o3mini: 10,   // Pro has O3 Mini access
     exportCooldownHours: 1,
     hasAdvancedModels: true,
-    hasTeamSharing: false,
-    hasAdvancedTemplates: false,
-    hasEarlyAccess: false,
     supportLevel: 'email'
   },
   proplus: {
@@ -66,9 +58,6 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     o3mini: -1,   // Unlimited O3 Mini access
     exportCooldownHours: 0, // No cooldown
     hasAdvancedModels: true,
-    hasTeamSharing: true,
-    hasAdvancedTemplates: true,
-    hasEarlyAccess: true,
     supportLevel: 'live'
   }
 };

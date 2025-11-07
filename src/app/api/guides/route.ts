@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getGuidesCollection, SavedGuide } from '@/lib/guides-db';
-import { getUserTeamMembers } from '@/lib/team';
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,19 +38,6 @@ export async function POST(req: NextRequest) {
     const guides = await getGuidesCollection();
     const userId = session.user.id || session.user.email || '';
     
-    // If collaborative, automatically share with team members
-    let sharedWith: string[] = [];
-    if (collaborative) {
-      try {
-        const teamMembers = await getUserTeamMembers(session.user.email || '');
-        sharedWith = teamMembers.map(member => member.email);
-        console.log('Auto-sharing collaborative guide with team members:', sharedWith);
-      } catch (error) {
-        console.error('Error fetching team members for collaborative guide:', error);
-        // Continue without sharing if team fetch fails
-      }
-    }
-    
     const newGuide: SavedGuide = {
       title,
       content,
@@ -62,7 +48,6 @@ export async function POST(req: NextRequest) {
       userEmail: session.user.email || '',
       isPublic,
       collaborative,
-      sharedWith,
       tags,
       folderId,
       folderPath,

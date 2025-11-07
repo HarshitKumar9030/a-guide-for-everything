@@ -148,7 +148,11 @@ export default function GuidesPage() {
       fetchUserPlan();
       fetchGuides();
       fetchFolders();
-      fetchCollaborativeGuides(); // Fetch collaborative guides for all users
+      
+      // Only fetch collaborative guides for Pro+ users
+      if (userPlan.plan === 'proplus') {
+        fetchCollaborativeGuides();
+      }
     }
   }, [session, userPlan.plan]);
 
@@ -216,11 +220,7 @@ export default function GuidesPage() {
     }
   };
 
-  const filteredGuides = [...guides, ...collaborativeGuides].filter((guide, index, self) => {
-    // Remove duplicates based on _id
-    const isUnique = self.findIndex(g => g._id === guide._id) === index;
-    if (!isUnique) return false;
-    
+  const filteredGuides = guides.filter(guide => {
     const matchesSearch = guide.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          guide.content.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterTag === 'all' || 

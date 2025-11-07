@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
-import { User, LogOut, BookMarked, X, Search, Crown, FileText } from 'lucide-react';
+import { User, LogOut, BookMarked, X, Search, BarChart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/core/Avatar';
 
@@ -154,9 +154,9 @@ export default function NavBar() {
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: 0.175 }}
                                             >
-                                                <Link href="/dashboard" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
-                                                    <Crown className="mr-3" size={20} />
-                                                    <span>Dashboard</span>
+                                                <Link href="/usage" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
+                                                    <BarChart className="mr-3" size={20} />
+                                                    <span>Usage & Limits</span>
                                                 </Link>
                                             </motion.div>
 
@@ -165,10 +165,7 @@ export default function NavBar() {
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: 0.19 }}
                                             >
-                                                <Link href="/guides" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
-                                                    <FileText className="mr-3" size={20} />
-                                                    <span>My Guides</span>
-                                                </Link>
+                                                {/* Guides removed with premium feature cleanup */}
                                             </motion.div>
 
                                             <motion.div
@@ -377,23 +374,14 @@ export default function NavBar() {
                                                                 initial={{ opacity: 0, x: -10 }}
                                                                 animate={{ opacity: 1, x: 0 }}
                                                                 transition={{ delay: 0.125 }}
-                                                                onClick={() => handlePush('/dashboard')}
+                                                                onClick={() => handlePush('/usage')}
                                                                 className="flex items-center px-4 py-2 w-full text-left text-white hover:bg-[#333333] transition-colors"
                                                             >
-                                                                <Crown className="mr-2" size={18} />
-                                                                <span>Dashboard</span>
+                                                                <BarChart className="mr-2" size={18} />
+                                                                <span>Usage & Limits</span>
                                                             </motion.button>
 
-                                                            <motion.button
-                                                                initial={{ opacity: 0, x: -10 }}
-                                                                animate={{ opacity: 1, x: 0 }}
-                                                                transition={{ delay: 0.14 }}
-                                                                onClick={() => handlePush('/guides')}
-                                                                className="flex items-center px-4 py-2 w-full text-left text-white hover:bg-[#333333] transition-colors"
-                                                            >
-                                                                <FileText className="mr-2" size={18} />
-                                                                <span>My Guides</span>
-                                                            </motion.button>
+                                                            {/* Guides link removed */}
 
                                                             <motion.button
                                                                 initial={{ opacity: 0, x: -10 }}
