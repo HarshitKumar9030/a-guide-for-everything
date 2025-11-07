@@ -14,19 +14,65 @@ import { useRouter } from 'next/navigation';
 import { useGuide } from '@/contexts/GuideContext';
 import { GuideStorage } from '@/lib/guide-storage';
 
-// Export the model type and available models
-export type ModelType = 'gemini-flash-2.5' | 'llama-4-hackclub' | 'deepseek-r1-free' | 'gpt-4.1' | 'gpt-4.1-mini' | 'o3-mini';
+// Central model registry (UI IDs) mapped to backend aliases
+// NOTE: We keep backward compatibility for stored guides that may reference old IDs.
+export type ModelType =
+    | 'gemini-2.5-flash'
+    | 'kimi'
+    | 'kimi0905'
+    | 'qwen3-32b'
+    | 'gpt-oss-20b'
+    | 'gpt-oss-120b'
+    | 'deepseek-r1-free'
+    | 'gpt-4.1'
+    | 'gpt-4.1-mini'
+    | 'o3-mini';
 
-export const availableModels = [
-    { id: 'gemini-flash-2.5' as ModelType, name: 'Gemini Flash 2.5', provider: 'Google' },
-    { id: 'llama-4-hackclub' as ModelType, name: 'Llama 4', provider: 'HackClub' },
-    { id: 'deepseek-r1-free' as ModelType, name: 'DeepSeek R1', provider: 'OpenRouter' },
-    { id: 'gpt-4.1' as ModelType, name: 'GPT-4.1', provider: 'Azure OpenAI' },
-    { id: 'gpt-4.1-mini' as ModelType, name: 'GPT-4.1 Mini', provider: 'Azure OpenAI' },
-    { id: 'o3-mini' as ModelType, name: 'O3 Mini', provider: 'Azure OpenAI' }
+export interface UIModelDef {
+    id: ModelType;
+    name: string;
+    provider: string;
+    bucket: 'llama' | 'osslarge' | 'gemini' | 'deepseek' | 'gpt41' | 'gpt41mini' | 'o3mini';
+    guest?: boolean; // allowed for guests
+    plan?: 'free' | 'pro' | 'proplus'; // minimum plan required (implicit ordering)
+    thinking?: boolean;
+}
+
+export const availableModels: UIModelDef[] = [
+    { id: 'kimi', name: 'Kimi K2', provider: 'HackClub', bucket: 'llama', guest: true, thinking: true },
+    { id: 'kimi0905', name: 'Kimi K2 (0905)', provider: 'HackClub', bucket: 'llama', thinking: true },
+    { id: 'qwen3-32b', name: 'Qwen3 32B', provider: 'HackClub', bucket: 'osslarge', thinking: true, plan: 'pro' },
+    { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', provider: 'HackClub', bucket: 'osslarge', plan: 'pro' },
+    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'HackClub', bucket: 'osslarge', plan: 'pro' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', bucket: 'gemini' },
+    { id: 'deepseek-r1-free', name: 'DeepSeek R1', provider: 'OpenRouter', bucket: 'deepseek', guest: true },
+    { id: 'gpt-4.1', name: 'GPT-4.1', provider: 'Azure OpenAI', bucket: 'gpt41', plan: 'proplus' },
+    { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', provider: 'Azure OpenAI', bucket: 'gpt41mini', plan: 'proplus' },
+    { id: 'o3-mini', name: 'O3 Mini', provider: 'Azure OpenAI', bucket: 'o3mini', plan: 'pro' },
 ];
 
-let selectedModelGlobal: ModelType = 'llama-4-hackclub'; // Default to Llama for guests
+// Map UI IDs to API model parameter values expected by /api/ai/guide
+// These resolve to usage buckets & hackclub models in the route.
+export function toApiModel(id: ModelType): string {
+    switch (id) {
+        case 'gemini-2.5-flash':
+            return 'gemini';
+        case 'kimi':
+            return 'kimi';
+        case 'kimi0905':
+            return 'kimi0905';
+        case 'qwen3-32b':
+            return 'qwen32b';
+        case 'gpt-oss-20b':
+            return 'gptoss20b';
+        case 'gpt-oss-120b':
+            return 'gptoss120b';
+        default:
+            return id; // deepseek-r1-free, gpt-4.1, gpt-4.1-mini, o3-mini map directly
+    }
+}
+
+let selectedModelGlobal: ModelType = 'kimi'; // Default base model for guests
 let modelChangeListeners: ((model: ModelType) => void)[] = [];
 
 const useUserLimits = () => {
@@ -37,7 +83,8 @@ const useUserLimits = () => {
         gpt41Guides: number;
         gpt41miniGuides: number;
         o3miniGuides: number;
-        remaining: { llama: number; gemini: number; deepseek: number; gpt41: number; gpt41mini: number; o3mini: number };
+        osslargeGuides?: number;
+        remaining: { llama: number; gemini: number; deepseek: number; gpt41: number; gpt41mini: number; o3mini: number; osslarge: number };
         guestRemaining?: number;
     } | null>(null);
     const [loading, setLoading] = useState(false);
@@ -53,7 +100,8 @@ const useUserLimits = () => {
                 gpt41Guides: 0,
                 gpt41miniGuides: 0,
                 o3miniGuides: 0,
-                remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41: 0, gpt41mini: 0, o3mini: 0 },
+                osslargeGuides: 0,
+                remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41: 0, gpt41mini: 0, o3mini: 0, osslarge: 0 },
                 guestRemaining: Math.max(0, 3 - guestCount)
             });
             return;
@@ -104,7 +152,7 @@ export default function DesktopLayout() {
     const { data: session } = useSession();
     const router = useRouter();
     const { startGeneration, finishGeneration, setError } = useGuide();
-    const [selectedModel, setSelectedModel] = useState<ModelType>('llama-4-hackclub'); // Default to Llama
+    const [selectedModel, setSelectedModel] = useState<ModelType>('kimi'); // Default base model
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isInputMode, setIsInputMode] = useState(false);
@@ -115,34 +163,74 @@ export default function DesktopLayout() {
     const [shimmerTrigger, setShimmerTrigger] = useState(0);
     const [isGenerating, setIsGenerating] = useState(false);
     const { limits, loading, refetch } = useUserLimits();
+    const [userPlan, setUserPlan] = useState<'free' | 'pro' | 'proplus'>('free');
+    const [premiumReason, setPremiumReason] = useState<'planAccess' | 'limit'>('planAccess');
+    const [requiredPlan, setRequiredPlan] = useState<'pro' | 'proplus' | undefined>(undefined);
+
+    // Fetch subscription / plan
+    useEffect(() => {
+        if (!session) { setUserPlan('free'); return; }
+        (async () => {
+            try {
+                const res = await fetch('/api/user/subscription');
+                if (res.ok) {
+                    const data = await res.json();
+                    setUserPlan(data.subscription?.plan || 'free');
+                }
+            } catch (e) {
+                // swallow
+            }
+        })();
+    }, [session]);
     const shimmerActive = useShimmer(shimmerTrigger);
 
     React.useEffect(() => {
         if (!session) {
-            // For guests, always default to Llama
-            setSelectedModel('llama-4-hackclub');
-            updateSelectedModel('llama-4-hackclub');
+            setSelectedModel('kimi');
+            updateSelectedModel('kimi');
         }
-    }, [session]);    const handleModelChange = (model: ModelType) => {
-        // If guest tries to select premium models, show login modal
-        if (!session && model !== 'llama-4-hackclub' && model !== 'deepseek-r1-free') {
+    }, [session]);
+    const modelRequiresPlan = (def: UIModelDef | undefined): 'pro' | 'proplus' | undefined => {
+        if (!def) return undefined;
+        if (def.plan === 'pro' || def.plan === 'proplus') return def.plan;
+        return undefined;
+    };
+
+    const planSatisfies = (need: 'pro' | 'proplus' | undefined, have: 'free' | 'pro' | 'proplus') => {
+        if (!need) return true;
+        const order = { free: 0, pro: 1, proplus: 2 } as const;
+        return order[have] >= order[need];
+    };
+
+    const handleModelChange = (model: ModelType) => {
+        const def = availableModels.find(m => m.id === model);
+        const isGuestAllowed = def?.guest;
+        if (!session && !isGuestAllowed) {
             setIsPleaseLoginModalOpen(true);
             setIsDropdownOpen(false);
             return;
         }
+        // plan gating
+        const needed = modelRequiresPlan(def);
+        if (session && needed && !planSatisfies(needed, userPlan)) {
+            setRequiredPlan(needed);
+            setPremiumReason('planAccess');
+            setIsPremiumModalOpen(true);
+            setIsDropdownOpen(false);
+            return;
+        }
 
-        console.log('Model change started:', model);
         setSelectedModel(model);
         updateSelectedModel(model);
         setIsDropdownOpen(false);
+        setTimeout(() => setShimmerTrigger(Date.now()), 150);
+    };
 
-        setTimeout(() => {
-            const newTrigger = Date.now(); // Using timestamp to ensure it's always different
-            setShimmerTrigger(newTrigger);
-        }, 150);
-    }; const handleInputClick = () => {
+    const handleInputClick = () => {
         setIsInputMode(true);
-    }; const handleSubmit = async () => {
+    };
+
+    const handleSubmit = async () => {
         if (!inputValue.trim() || isGenerating) return;
 
         // Check guest limits if not logged in
@@ -153,14 +241,28 @@ export default function DesktopLayout() {
                 return;
             }
 
-        // Ensure guests can only use Llama or DeepSeek
-        if (selectedModel !== 'llama-4-hackclub' && selectedModel !== 'deepseek-r1-free') {
-            setSelectedModel('llama-4-hackclub');
-            updateSelectedModel('llama-4-hackclub');
-        }
+            // Force guests to allowed models only
+            const def = availableModels.find(m => m.id === selectedModel);
+            if (!def?.guest) {
+                setSelectedModel('kimi');
+                updateSelectedModel('kimi');
+            }
         } else {
             // Check if user has reached their limit for the selected model
             if (limits && isGenerationDisabled()) {
+                // Determine if it's limit or plan access
+                const def = availableModels.find(m => m.id === selectedModel);
+                const need = modelRequiresPlan(def);
+                if (need && !planSatisfies(need, userPlan)) {
+                    setPremiumReason('planAccess');
+                    setRequiredPlan(need);
+                } else {
+                    setPremiumReason('limit');
+                    // Suggest next plan if not already proplus
+                    if (userPlan === 'free') setRequiredPlan('pro');
+                    else if (userPlan === 'pro') setRequiredPlan('proplus');
+                    else setRequiredPlan(undefined);
+                }
                 setIsPremiumModalOpen(true);
                 return;
             }
@@ -177,7 +279,7 @@ export default function DesktopLayout() {
                 },
                 body: JSON.stringify({
                     prompt: inputValue.trim(),
-                    model: selectedModel
+                    model: toApiModel(selectedModel)
                 }),
             });
 
@@ -231,24 +333,24 @@ export default function DesktopLayout() {
             let current = 0;
             let max = 0;
             
-            if (selectedModel === 'llama-4-hackclub') {
-                current = limits.remaining.llama;
-                max = 6;
-            } else if (selectedModel === 'gemini-flash-2.5') {
-                current = limits.remaining.gemini;
-                max = 4;
-            } else if (selectedModel === 'deepseek-r1-free') {
-                current = limits.remaining.deepseek;
-                max = 4;
-            } else if (selectedModel === 'gpt-4.1') {
-                current = limits.remaining.gpt41;
-                max = 3;
-            } else if (selectedModel === 'gpt-4.1-mini') {
-                current = limits.remaining.gpt41mini;
-                max = 3;
-            } else if (selectedModel === 'o3-mini') {
-                current = limits.remaining.o3mini;
-                max = 2;
+            const def = availableModels.find(m => m.id === selectedModel);
+            if (def) {
+                switch (def.bucket) {
+                    case 'llama':
+                        current = limits.remaining.llama; max = 6; break; // UI fallback numbers (could derive dynamically)
+                    case 'gemini':
+                        current = limits.remaining.gemini; max = 4; break;
+                    case 'deepseek':
+                        current = limits.remaining.deepseek; max = 4; break;
+                    case 'gpt41':
+                        current = limits.remaining.gpt41; max = 3; break;
+                    case 'gpt41mini':
+                        current = limits.remaining.gpt41mini; max = 3; break;
+                    case 'o3mini':
+                        current = limits.remaining.o3mini; max = 2; break;
+                    case 'osslarge':
+                        current = limits.remaining.osslarge; max = 8; break;
+                }
             }
             
             return `${current}/${max}`;
@@ -266,18 +368,17 @@ export default function DesktopLayout() {
         }
 
         if (limits) {
-            if (selectedModel === 'llama-4-hackclub') {
-                return limits.remaining.llama <= 0;
-            } else if (selectedModel === 'gemini-flash-2.5') {
-                return limits.remaining.gemini <= 0;
-            } else if (selectedModel === 'deepseek-r1-free') {
-                return limits.remaining.deepseek <= 0;
-            } else if (selectedModel === 'gpt-4.1') {
-                return limits.remaining.gpt41 <= 0;
-            } else if (selectedModel === 'gpt-4.1-mini') {
-                return limits.remaining.gpt41mini <= 0;
-            } else if (selectedModel === 'o3-mini') {
-                return limits.remaining.o3mini <= 0;
+            const def = availableModels.find(m => m.id === selectedModel);
+            if (def) {
+                switch (def.bucket) {
+                    case 'llama': return limits.remaining.llama <= 0;
+                    case 'gemini': return limits.remaining.gemini <= 0;
+                    case 'deepseek': return limits.remaining.deepseek <= 0;
+                    case 'gpt41': return limits.remaining.gpt41 <= 0;
+                    case 'gpt41mini': return limits.remaining.gpt41mini <= 0;
+                    case 'o3mini': return limits.remaining.o3mini <= 0;
+                    case 'osslarge': return limits.remaining.osslarge <= 0;
+                }
             }
         }
 
@@ -298,6 +399,17 @@ export default function DesktopLayout() {
         
         // If user is logged in but has reached their limit, show premium modal
         if (session && limits && isGenerationDisabled()) {
+            const def = availableModels.find(m => m.id === selectedModel);
+            const need = modelRequiresPlan(def);
+            if (need && !planSatisfies(need, userPlan)) {
+                setPremiumReason('planAccess');
+                setRequiredPlan(need);
+            } else {
+                setPremiumReason('limit');
+                if (userPlan === 'free') setRequiredPlan('pro');
+                else if (userPlan === 'pro') setRequiredPlan('proplus');
+                else setRequiredPlan(undefined);
+            }
             setIsPremiumModalOpen(true);
             return;
         }
@@ -360,30 +472,17 @@ export default function DesktopLayout() {
                                     let max = 0;
                                     let modelName = '';
                                     
-                                    if (selectedModel === 'llama-4-hackclub') {
-                                        current = limits.remaining.llama;
-                                        max = 6;
-                                        modelName = 'Llama';
-                                    } else if (selectedModel === 'gemini-flash-2.5') {
-                                        current = limits.remaining.gemini;
-                                        max = 4;
-                                        modelName = 'Gemini';
-                                    } else if (selectedModel === 'deepseek-r1-free') {
-                                        current = limits.remaining.deepseek;
-                                        max = 4;
-                                        modelName = 'DeepSeek';
-                                    } else if (selectedModel === 'gpt-4.1') {
-                                        current = limits.remaining.gpt41;
-                                        max = 3;
-                                        modelName = 'GPT-4.1';
-                                    } else if (selectedModel === 'gpt-4.1-mini') {
-                                        current = limits.remaining.gpt41mini;
-                                        max = 3;
-                                        modelName = 'GPT-4.1 Mini';
-                                    } else if (selectedModel === 'o3-mini') {
-                                        current = limits.remaining.o3mini;
-                                        max = 2;
-                                        modelName = 'O3';
+                                    const def = availableModels.find(m => m.id === selectedModel);
+                                    if (def) {
+                                        switch (def.bucket) {
+                                            case 'llama': current = limits.remaining.llama; max = 6; modelName = 'Base (Kimi)'; break;
+                                            case 'gemini': current = limits.remaining.gemini; max = 4; modelName = 'Gemini'; break;
+                                            case 'deepseek': current = limits.remaining.deepseek; max = 4; modelName = 'DeepSeek'; break;
+                                            case 'gpt41': current = limits.remaining.gpt41; max = 3; modelName = 'GPT-4.1'; break;
+                                            case 'gpt41mini': current = limits.remaining.gpt41mini; max = 3; modelName = 'GPT-4.1 Mini'; break;
+                                            case 'o3mini': current = limits.remaining.o3mini; max = 2; modelName = 'O3'; break;
+                                            case 'osslarge': current = limits.remaining.osslarge; max = 8; modelName = 'OSS Large'; break;
+                                        }
                                     }
                                     
                                     return `${current}/${max} ${modelName} left`;
@@ -453,7 +552,7 @@ export default function DesktopLayout() {
                                 </Shimmer>
                                 {isDropdownOpen && (<div className="absolute top-full mt-2 right-0 bg-[#272727] rounded-xl shadow-2xl border border-white/10 min-w-[220px] max-w-[280px] max-h-[200px] overflow-y-auto z-10 p-1">
                                     {availableModels.map((model) => {
-                                        const isDisabled = !session && model.id !== 'llama-4-hackclub' && model.id !== 'deepseek-r1-free';
+                                        const isDisabled = !session && !model.guest;
                                         return (
                                             <div
                                                 key={model.id}
@@ -511,6 +610,8 @@ export default function DesktopLayout() {
                 isOpen={isPremiumModalOpen}
                 onClose={() => setIsPremiumModalOpen(false)}
                 currentModel={availableModels.find(m => m.id === selectedModel)?.name || selectedModel}
+                requiredPlan={requiredPlan}
+                reason={premiumReason}
             />
         </div>
     );

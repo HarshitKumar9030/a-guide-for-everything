@@ -20,6 +20,8 @@ export interface PlanLimits {
   gpt41: number;
   gpt41mini: number;
   o3mini: number;
+  osslarge: number; // New bucket for large open-source (qwen3-32b, gpt-oss-20b/120b)
+  nanobanana: number; // Image + text multimodal nano banana model
   exportCooldownHours: number;
   hasAdvancedModels: boolean;
   // Premium collaboration features removed; keep minimal flags
@@ -34,6 +36,8 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     gpt41: 0,     // Disabled for free users
     gpt41mini: 0, // Disabled for free users
     o3mini: 0,    // Disabled for free users
+    osslarge: 0,  // Disabled for free users
+    nanobanana: 2, // Allow limited tries
     exportCooldownHours: 6,
     hasAdvancedModels: false,
     supportLevel: 'none'
@@ -45,6 +49,8 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     gpt41: 0,     // Pro doesn't have GPT-4.1, only Pro+ does
     gpt41mini: 0, // Pro doesn't have GPT-4.1, only Pro+ does
     o3mini: 10,   // Pro has O3 Mini access
+    osslarge: 8,  // Pro can access large OSS models with quota
+    nanobanana: 10,
     exportCooldownHours: 1,
     hasAdvancedModels: true,
     supportLevel: 'email'
@@ -56,6 +62,8 @@ export const PLAN_LIMITS: Record<UserPlan, PlanLimits> = {
     gpt41: -1,    // Unlimited GPT-4.1 access for Pro+
     gpt41mini: -1, // Unlimited GPT-4.1 Mini access for Pro+
     o3mini: -1,   // Unlimited O3 Mini access
+    osslarge: -1, // Unlimited large OSS models
+    nanobanana: -1,
     exportCooldownHours: 0, // No cooldown
     hasAdvancedModels: true,
     supportLevel: 'live'
@@ -133,12 +141,12 @@ export function getPlanLimits(plan: UserPlan): PlanLimits {
 export function checkModelAccess(plan: UserPlan, model: string): boolean {
   // Free users can't access premium models
   if (plan === 'free') {
-    return model === 'llama' || model === 'gemini' || model === 'deepseek';
+    return model === 'llama' || model === 'gemini' || model === 'deepseek' || model === 'nanobanana';
   }
   
   // Pro users can access all except GPT-4.1 models
   if (plan === 'pro') {
-    return model !== 'gpt41' && model !== 'gpt41mini';
+    return model !== 'gpt41' && model !== 'gpt41mini'; // pro can use osslarge (separate bucket)
   }
   
   // Pro+ users can access all models
@@ -167,6 +175,12 @@ export function checkGenerationLimit(plan: UserPlan, model: string, currentCount
       break;
     case 'o3mini':
       modelLimit = limits.o3mini;
+      break;
+    case 'osslarge':
+      modelLimit = limits.osslarge;
+      break;
+    case 'nanobanana':
+      modelLimit = limits.nanobanana;
       break;
     default:
       return false;

@@ -71,9 +71,14 @@ interface SearchResponse {
 
 const MODELS = [
     'All Models',
-    'gemini-flash-2.5',
-    'llama-4-hackclub',
+    'gemini-2.5-flash',
+    'kimi',
+    'kimi0905',
+    'qwen3-32b',
+    'gpt-oss-20b',
+    'gpt-oss-120b',
     'deepseek-r1-free',
+    'gpt-4.1',
     'gpt-4.1-mini',
     'o3-mini'
 ];

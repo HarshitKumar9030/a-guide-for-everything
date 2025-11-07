@@ -9,12 +9,16 @@ interface PremiumUpgradeModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentModel?: string;
+    requiredPlan?: 'pro' | 'proplus';
+    reason?: 'planAccess' | 'limit'; // why the modal showed
 }
 
 export default function PremiumUpgradeModal({ 
     isOpen, 
     onClose, 
-    currentModel = "this model"
+    currentModel = "this model",
+    requiredPlan,
+    reason = 'planAccess'
 }: PremiumUpgradeModalProps) {
     // Prevent scrolling when modal is open
     useEffect(() => {
@@ -116,13 +120,14 @@ export default function PremiumUpgradeModal({
                                 className="mb-6"
                             >
                                 <h2 className="text-white text-2xl font-bold mb-2">
-                                    Upgrade to Pro or Pro+
+                                    {requiredPlan === 'proplus' ? 'Upgrade to Pro+' : requiredPlan === 'pro' ? 'Upgrade to Pro' : 'Upgrade Your Plan'}
                                 </h2>
-                                <p className="text-white/70 text-sm">
-                                    {currentModel.includes('GPT-4.1') || currentModel.includes('O3') 
-                                        ? `${currentModel} requires a premium subscription`
-                                        : `You've reached your limit for ${currentModel}. Upgrade for more guides.`
-                                    }
+                                <p className="text-white/70 text-sm leading-relaxed">
+                                    {reason === 'limit' ? (
+                                        <>You&apos;ve reached today&apos;s limit for <span className="text-white font-semibold">{currentModel}</span>. {requiredPlan ? (requiredPlan === 'proplus' ? 'Pro+ gives you unlimited access to advanced & base models.' : 'Pro increases your daily limits and unlocks advanced models.') : 'Upgrade for higher or unlimited usage.'}</>
+                                    ) : (
+                                        <><span className="text-white font-semibold">{currentModel}</span> requires {requiredPlan === 'proplus' ? 'a Pro+ subscription' : requiredPlan === 'pro' ? 'a Pro subscription' : 'an upgrade'}. Unlock advanced models & higher limits.</>
+                                    )}
                                 </p>
                             </motion.div>
                             
@@ -158,7 +163,7 @@ export default function PremiumUpgradeModal({
                                     className="w-full bg-primary hover:bg-primary/80 text-black font-medium py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Crown className="w-4 h-4" />
-                                    <span>Upgrade Now</span>
+                                    <span>{requiredPlan ? `Get ${requiredPlan === 'proplus' ? 'Pro+' : 'Pro'}` : 'Upgrade Now'}</span>
                                     <ArrowRight className="w-4 h-4" />
                                 </Link>
                                 

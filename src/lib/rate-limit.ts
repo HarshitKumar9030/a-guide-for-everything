@@ -4,6 +4,7 @@ export interface UserLimits {
   deepseekGuides: number;
   gpt41miniGuides: number;
   o3miniGuides: number;
+  osslargeGuides?: number;
   lastExport: number;
 }
 
@@ -18,6 +19,7 @@ export const RATE_LIMITS = {
   USER_DEEPSEEK_LIMIT: 4,
   USER_GPT41MINI_LIMIT: 3,
   USER_O3MINI_LIMIT: 2,
+  USER_OSSLARGE_LIMIT: 8,
   GUEST_GUIDE_LIMIT: 3, // guest limit 3 generations forverr
 };
 
@@ -54,6 +56,8 @@ export function checkUserGuideLimit(model: string, limits: UserLimits): boolean 
     return limits.gpt41miniGuides < RATE_LIMITS.USER_GPT41MINI_LIMIT;
   } else if (model === 'o3mini') {
     return limits.o3miniGuides < RATE_LIMITS.USER_O3MINI_LIMIT;
+  } else if (model === 'osslarge') {
+    return (limits.osslargeGuides || 0) < RATE_LIMITS.USER_OSSLARGE_LIMIT;
   }
   return false;
 }

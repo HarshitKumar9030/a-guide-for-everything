@@ -26,6 +26,8 @@ export async function GET() {
       gpt41Max: planLimits.gpt41 === -1 ? 999999 : planLimits.gpt41,
       gpt41miniMax: planLimits.gpt41mini === -1 ? 999999 : planLimits.gpt41mini,
       o3miniMax: planLimits.o3mini === -1 ? 999999 : planLimits.o3mini,
+      osslargeMax: planLimits.osslarge === -1 ? 999999 : planLimits.osslarge,
+      nanobananaMax: planLimits.nanobanana === -1 ? 999999 : planLimits.nanobanana,
       exportCooldown: planLimits.exportCooldownHours * 60 * 60 * 1000,
     };
 
@@ -36,6 +38,8 @@ export async function GET() {
       gpt41: planLimits.gpt41 === -1 ? 999999 : Math.max(0, planLimits.gpt41 - userLimits.gpt41Guides),
       gpt41mini: planLimits.gpt41mini === -1 ? 999999 : Math.max(0, planLimits.gpt41mini - userLimits.gpt41miniGuides),
       o3mini: planLimits.o3mini === -1 ? 999999 : Math.max(0, planLimits.o3mini - (userLimits.o3miniGuides || 0)),
+      osslarge: planLimits.osslarge === -1 ? 999999 : Math.max(0, planLimits.osslarge - (userLimits.osslargeGuides || 0)),
+      nanobanana: planLimits.nanobanana === -1 ? 999999 : Math.max(0, planLimits.nanobanana - (userLimits.nanobananaGuides || 0)),
     };
 
     return NextResponse.json({
@@ -44,7 +48,9 @@ export async function GET() {
       deepseekGuides: userLimits.deepseekGuides,
       gpt41Guides: userLimits.gpt41Guides,
       gpt41miniGuides: userLimits.gpt41miniGuides,
-      o3miniGuides: userLimits.o3miniGuides || 0,
+    o3miniGuides: userLimits.o3miniGuides || 0,
+    osslargeGuides: userLimits.osslargeGuides || 0,
+    nanobananaGuides: userLimits.nanobananaGuides || 0,
       lastExport: userLimits.lastExport,
       plan: userPlan.plan,
       limits: maxLimits,

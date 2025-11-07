@@ -1,0 +1,1 @@
+const axios=require(" axios\);(async()=>{const r=await axios.get(\https://ai.hackclub.com/model\);const raw=r.data;let list=[];if(Array.isArray(raw)){list=raw;}else if(typeof raw===\string\){list=raw.split(",\).map(s=>s.trim()).filter(Boolean);}else if(raw?.models && Array.isArray(raw.models)){list=raw.models;}list=list.filter(m=>!/llama/i.test(m));console.log(list);})();

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { geminiCompletion } from '@/lib/ai/gemini';
-import { checkAndIncrementUsage } from '@/lib/usage';
+import { checkAndIncrementUsage, recordUsage } from '@/lib/usage';
 import { getUserPlan, checkModelAccess } from '@/lib/user-plan';
 
 export async function POST(req: NextRequest) {
@@ -49,13 +49,21 @@ export async function POST(req: NextRequest) {
 
     const result = await geminiCompletion(prompt);
 
+    const totalTokens = result.tokens?.total ?? 0;
+
+    await recordUsage(session.user.email!, model, {
+      text: 1,
+      tokens: totalTokens,
+    });
+
     return NextResponse.json({
       response: result.content,
       model: result.model,
       timestamp: result.timestamp,
       user: session.user.email,
       plan: planDoc.plan,
-      remaining: usageCheck.remaining
+      remaining: usageCheck.remaining,
+      tokens: result.tokens,
     });
 
   } catch (error) {

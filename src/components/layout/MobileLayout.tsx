@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, ArrowUp, ChevronDown } from 'lucide-react';
 // import Stars from '../core/Stars';
 import CoolSquare from '../core/CoolSquare';
@@ -7,7 +7,7 @@ import PleaseLogin from '../core/PleaseLogin';
 import PremiumUpgradeModal from '../core/PremiumUpgradeModal';
 // import Footer from '../core/Footer';
 import { DefaultTypewriterText } from '../animation/text';
-import { ModelType, availableModels, updateSelectedModel } from './DesktopLayout';
+import { ModelType, availableModels, updateSelectedModel, toApiModel } from './DesktopLayout';
 import Shimmer, { useShimmer } from '../animation/shimmer';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -23,7 +23,8 @@ const useUserLimits = () => {
     gpt41Guides: number;
     gpt41miniGuides: number;
     o3miniGuides: number;
-    remaining: { llama: number; gemini: number; deepseek: number; gpt41: number; gpt41mini: number; o3mini: number };
+    osslargeGuides?: number;
+    remaining: { llama: number; gemini: number; deepseek: number; gpt41: number; gpt41mini: number; o3mini: number; osslarge: number };
     guestRemaining?: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,7 +41,8 @@ const useUserLimits = () => {
         gpt41Guides: 0,
         gpt41miniGuides: 0,
         o3miniGuides: 0,
-        remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41: 0, gpt41mini: 0, o3mini: 0 },
+        osslargeGuides: 0,
+        remaining: { llama: 0, gemini: 0, deepseek: 0, gpt41: 0, gpt41mini: 0, o3mini: 0, osslarge: 0 },
         guestRemaining: Math.max(0, 3 - guestCount)
       });
       return;
@@ -71,7 +73,7 @@ export default function MobileLayout() {
   const { data: session } = useSession();
   const router = useRouter();
   const { startGeneration, finishGeneration, setError } = useGuide();
-  const [selectedModel, setSelectedModel] = useState<ModelType>('llama-4-hackclub'); // Default to Llama
+  const [selectedModel, setSelectedModel] = useState<ModelType>('kimi'); // Default base model
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isInputMode, setIsInputMode] = useState(false);
@@ -81,20 +83,54 @@ export default function MobileLayout() {
   const [shimmerTrigger, setShimmerTrigger] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const { limits, refetch } = useUserLimits();
+  const [userPlan, setUserPlan] = useState<'free' | 'pro' | 'proplus'>('free');
+  const [premiumReason, setPremiumReason] = useState<'planAccess' | 'limit'>('planAccess');
+  const [requiredPlan, setRequiredPlan] = useState<'pro' | 'proplus' | undefined>(undefined);
   const shimmerActive = useShimmer(shimmerTrigger);
 
-  // Set default model based on session status
-  React.useEffect(() => {
+  // Set default model / fetch plan
+  useEffect(() => {
     if (!session) {
-      // For guests, always default to Llama
-      setSelectedModel('llama-4-hackclub');
-      updateSelectedModel('llama-4-hackclub');
+      setSelectedModel('kimi');
+      updateSelectedModel('kimi');
+      setUserPlan('free');
+      return;
     }
+    (async () => {
+      try {
+        const res = await fetch('/api/user/subscription');
+        if (res.ok) {
+          const data = await res.json();
+          setUserPlan(data.subscription?.plan || 'free');
+        }
+      } catch {}
+    })();
   }, [session]);
+  const modelRequiresPlan = (def: typeof availableModels[number] | undefined): 'pro' | 'proplus' | undefined => {
+    if (!def) return undefined;
+    return def.plan === 'pro' || def.plan === 'proplus' ? def.plan : undefined;
+  };
+
+  const planSatisfies = (need: 'pro' | 'proplus' | undefined, have: 'free' | 'pro' | 'proplus') => {
+    if (!need) return true;
+    const order = { free: 0, pro: 1, proplus: 2 } as const;
+    return order[have] >= order[need];
+  };
+
   const handleModelChange = (model: ModelType) => {
-    // If guest user tries to select premium models, show login modal
-    if (!session && model !== 'llama-4-hackclub' && model !== 'deepseek-r1-free') {
+    const def = availableModels.find(m => m.id === model);
+    const isGuestAllowed = def?.guest;
+    if (!session && !isGuestAllowed) {
       setIsPleaseLoginModalOpen(true);
+      setIsDropdownOpen(false);
+      return;
+    }
+
+    const need = modelRequiresPlan(def);
+    if (session && need && !planSatisfies(need, userPlan)) {
+      setRequiredPlan(need);
+      setPremiumReason('planAccess');
+      setIsPremiumModalOpen(true);
       setIsDropdownOpen(false);
       return;
     }
@@ -102,12 +138,7 @@ export default function MobileLayout() {
     setSelectedModel(model);
     updateSelectedModel(model);
     setIsDropdownOpen(false);
-
-    // Explicitly trigger shimmer after model change
-    setTimeout(() => {
-      const newTrigger = Date.now();
-      setShimmerTrigger(newTrigger);
-    }, 150);
+    setTimeout(() => setShimmerTrigger(Date.now()), 150);
   };
 
   const handleInputClick = () => {
@@ -127,13 +158,25 @@ export default function MobileLayout() {
 
       // Ensure guests can only use Llama or DeepSeek
       // Ensure guests can only use Llama or DeepSeek
-      if (selectedModel !== 'llama-4-hackclub' && selectedModel !== 'deepseek-r1-free') {
-        setSelectedModel('llama-4-hackclub');
-        updateSelectedModel('llama-4-hackclub');
+      const def = availableModels.find(m => m.id === selectedModel);
+      if (!def?.guest) {
+        setSelectedModel('kimi');
+        updateSelectedModel('kimi');
       }
     } else {
       // Check if user has reached their limit for the selected model
       if (limits && isGenerationDisabled()) {
+        const def = availableModels.find(m => m.id === selectedModel);
+        const need = modelRequiresPlan(def);
+        if (need && !planSatisfies(need, userPlan)) {
+          setPremiumReason('planAccess');
+          setRequiredPlan(need);
+        } else {
+          setPremiumReason('limit');
+          if (userPlan === 'free') setRequiredPlan('pro');
+          else if (userPlan === 'pro') setRequiredPlan('proplus');
+          else setRequiredPlan(undefined);
+        }
         setIsPremiumModalOpen(true);
         return;
       }
@@ -150,7 +193,7 @@ export default function MobileLayout() {
         },
         body: JSON.stringify({
           prompt: inputValue.trim(),
-          model: selectedModel
+          model: toApiModel(selectedModel)
         }),
       });
 
@@ -208,24 +251,17 @@ export default function MobileLayout() {
       let current = 0;
       let max = 0;
       
-      if (selectedModel === 'llama-4-hackclub') {
-        current = limits.remaining.llama;
-        max = 6;
-      } else if (selectedModel === 'gemini-flash-2.5') {
-        current = limits.remaining.gemini;
-        max = 4;
-      } else if (selectedModel === 'deepseek-r1-free') {
-        current = limits.remaining.deepseek;
-        max = 4;
-      } else if (selectedModel === 'gpt-4.1') {
-        current = limits.remaining.gpt41;
-        max = 3;
-      } else if (selectedModel === 'gpt-4.1-mini') {
-        current = limits.remaining.gpt41mini;
-        max = 3;
-      } else if (selectedModel === 'o3-mini') {
-        current = limits.remaining.o3mini;
-        max = 2;
+      const def = availableModels.find(m => m.id === selectedModel);
+      if (def) {
+        switch (def.bucket) {
+          case 'llama': current = limits.remaining.llama; max = 6; break;
+          case 'gemini': current = limits.remaining.gemini; max = 4; break;
+          case 'deepseek': current = limits.remaining.deepseek; max = 4; break;
+          case 'gpt41': current = limits.remaining.gpt41; max = 3; break;
+          case 'gpt41mini': current = limits.remaining.gpt41mini; max = 3; break;
+          case 'o3mini': current = limits.remaining.o3mini; max = 2; break;
+          case 'osslarge': current = limits.remaining.osslarge; max = 8; break;
+        }
       }
       
       return `${current}/${max}`;
@@ -248,6 +284,17 @@ export default function MobileLayout() {
     
     // If user is logged in but has reached their limit, show premium modal
     if (session && limits && isGenerationDisabled()) {
+      const def = availableModels.find(m => m.id === selectedModel);
+      const need = modelRequiresPlan(def);
+      if (need && !planSatisfies(need, userPlan)) {
+        setPremiumReason('planAccess');
+        setRequiredPlan(need);
+      } else {
+        setPremiumReason('limit');
+        if (userPlan === 'free') setRequiredPlan('pro');
+        else if (userPlan === 'pro') setRequiredPlan('proplus');
+        else setRequiredPlan(undefined);
+      }
       setIsPremiumModalOpen(true);
       return;
     }
@@ -265,18 +312,17 @@ export default function MobileLayout() {
     }
 
     if (limits) {
-      if (selectedModel === 'llama-4-hackclub') {
-        return limits.remaining.llama <= 0;
-      } else if (selectedModel === 'gemini-flash-2.5') {
-        return limits.remaining.gemini <= 0;
-      } else if (selectedModel === 'deepseek-r1-free') {
-        return limits.remaining.deepseek <= 0;
-      } else if (selectedModel === 'gpt-4.1') {
-        return limits.remaining.gpt41 <= 0;
-      } else if (selectedModel === 'gpt-4.1-mini') {
-        return limits.remaining.gpt41mini <= 0;
-      } else if (selectedModel === 'o3-mini') {
-        return limits.remaining.o3mini <= 0;
+      const def = availableModels.find(m => m.id === selectedModel);
+      if (def) {
+        switch (def.bucket) {
+          case 'llama': return limits.remaining.llama <= 0;
+          case 'gemini': return limits.remaining.gemini <= 0;
+          case 'deepseek': return limits.remaining.deepseek <= 0;
+          case 'gpt41': return limits.remaining.gpt41 <= 0;
+          case 'gpt41mini': return limits.remaining.gpt41mini <= 0;
+          case 'o3mini': return limits.remaining.o3mini <= 0;
+          case 'osslarge': return limits.remaining.osslarge <= 0;
+        }
       }
     }
 
@@ -313,24 +359,17 @@ export default function MobileLayout() {
                   let current = 0;
                   let max = 0;
                   
-                  if (selectedModel === 'llama-4-hackclub') {
-                    current = limits.remaining.llama;
-                    max = 6;
-                  } else if (selectedModel === 'gemini-flash-2.5') {
-                    current = limits.remaining.gemini;
-                    max = 4;
-                  } else if (selectedModel === 'deepseek-r1-free') {
-                    current = limits.remaining.deepseek;
-                    max = 4;
-                  } else if (selectedModel === 'gpt-4.1') {
-                    current = limits.remaining.gpt41;
-                    max = 3;
-                  } else if (selectedModel === 'gpt-4.1-mini') {
-                    current = limits.remaining.gpt41mini;
-                    max = 3;
-                  } else if (selectedModel === 'o3-mini') {
-                    current = limits.remaining.o3mini;
-                    max = 2;
+                  const def = availableModels.find(m => m.id === selectedModel);
+                  if (def) {
+                    switch (def.bucket) {
+                      case 'llama': current = limits.remaining.llama; max = 6; break;
+                      case 'gemini': current = limits.remaining.gemini; max = 4; break;
+                      case 'deepseek': current = limits.remaining.deepseek; max = 4; break;
+                      case 'gpt41': current = limits.remaining.gpt41; max = 3; break;
+                      case 'gpt41mini': current = limits.remaining.gpt41mini; max = 3; break;
+                      case 'o3mini': current = limits.remaining.o3mini; max = 2; break;
+                      case 'osslarge': current = limits.remaining.osslarge; max = 8; break;
+                    }
                   }
                   
                   return `${current}/${max} left`;
@@ -427,7 +466,7 @@ export default function MobileLayout() {
                     </Shimmer>
                     {isDropdownOpen && (<div className="absolute top-full mt-2 right-0 bg-[#272727] rounded-xl shadow-2xl border border-white/10 min-w-[200px] max-h-[200px] overflow-y-auto z-10 p-1">
                       {availableModels.map((model) => {
-                        const isDisabled = !session && model.id !== 'llama-4-hackclub' && model.id !== 'deepseek-r1-free';
+                        const isDisabled = !session && !model.guest;
                         return (
                           <div
                             key={model.id}
@@ -488,6 +527,8 @@ export default function MobileLayout() {
         isOpen={isPremiumModalOpen}
         onClose={() => setIsPremiumModalOpen(false)}
         currentModel={availableModels.find(m => m.id === selectedModel)?.name || selectedModel}
+        requiredPlan={requiredPlan}
+        reason={premiumReason}
       />
     </div>
   );

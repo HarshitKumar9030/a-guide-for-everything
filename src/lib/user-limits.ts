@@ -8,6 +8,8 @@ export interface UserLimitDoc {
   gpt41Guides: number;
   gpt41miniGuides: number;
   o3miniGuides: number;
+  osslargeGuides?: number;
+  nanobananaGuides?: number;
   lastExport: number;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +30,8 @@ export async function getUserLimits(userEmail: string): Promise<UserLimitDoc> {
       gpt41Guides: 0,
       gpt41miniGuides: 0,
       o3miniGuides: 0,
+      osslargeGuides: 0,
+      nanobananaGuides: 0,
       lastExport: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -41,7 +45,9 @@ export async function getUserLimits(userEmail: string): Promise<UserLimitDoc> {
     deepseekGuides: 0,
     gpt41Guides: 0,
     gpt41miniGuides: 0,
-    o3miniGuides: 0
+    o3miniGuides: 0,
+    osslargeGuides: 0,
+    nanobananaGuides: 0
   };
 
   const missingFields: Record<string, number> = {};
@@ -84,6 +90,10 @@ export async function incrementGuideCount(userEmail: string, model: string): Pro
     updateField = 'gpt41miniGuides';
   } else if (model === 'o3mini') {
     updateField = 'o3miniGuides';
+  } else if (model === 'osslarge') {
+    updateField = 'osslargeGuides';
+  } else if (model === 'nanobanana') {
+    updateField = 'nanobananaGuides';
   } else {
     throw new Error(`Invalid model: ${model}`);
   }

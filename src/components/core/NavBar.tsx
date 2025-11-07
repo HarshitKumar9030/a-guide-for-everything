@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
-import { User, LogOut, BookMarked, X, Search, BarChart } from 'lucide-react';
+import { User, LogOut, BookMarked, X, Search, BarChart, Brain, MessageSquare } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/core/Avatar';
 
@@ -157,6 +157,28 @@ export default function NavBar() {
                                                 <Link href="/usage" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
                                                     <BarChart className="mr-3" size={20} />
                                                     <span>Usage & Limits</span>
+                                                </Link>
+                                            </motion.div>
+
+                                            <motion.div
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.18 }}
+                                            >
+                                                <Link href="/chat" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
+                                                    <MessageSquare className="mr-3" size={20} />
+                                                    <span>Chat</span>
+                                                </Link>
+                                            </motion.div>
+
+                                            <motion.div
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.185 }}
+                                            >
+                                                <Link href="/models" className="flex items-center p-4 bg-[#272727] rounded-xl text-white hover:bg-[#333333] transition-colors">
+                                                    <Brain className="mr-3" size={20} />
+                                                    <span>Models</span>
                                                 </Link>
                                             </motion.div>
 
@@ -379,6 +401,28 @@ export default function NavBar() {
                                                             >
                                                                 <BarChart className="mr-2" size={18} />
                                                                 <span>Usage & Limits</span>
+                                                            </motion.button>
+
+                                                            <motion.button
+                                                                initial={{ opacity: 0, x: -10 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ delay: 0.14 }}
+                                                                onClick={() => handlePush('/chat')}
+                                                                className="flex items-center px-4 py-2 w-full text-left text-white hover:bg-[#333333] transition-colors"
+                                                            >
+                                                                <MessageSquare className="mr-2" size={18} />
+                                                                <span>Chat</span>
+                                                            </motion.button>
+
+                                                            <motion.button
+                                                                initial={{ opacity: 0, x: -10 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ delay: 0.145 }}
+                                                                onClick={() => handlePush('/models')}
+                                                                className="flex items-center px-4 py-2 w-full text-left text-white hover:bg-[#333333] transition-colors"
+                                                            >
+                                                                <Brain className="mr-2" size={18} />
+                                                                <span>Models</span>
                                                             </motion.button>
 
                                                             {/* Guides link removed */}

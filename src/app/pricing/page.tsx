@@ -51,7 +51,7 @@ const PricingPage = () => {
       description: 'Perfect for getting started',
       price: { monthly: 0, yearly: 0 },
       features: [
-        '6 Llama guides per day',
+  '6 Kimi (Base) guides per day',
         '4 Gemini guides per day', 
         '4 DeepSeek guides per day',
         'Basic guide generation',
@@ -75,7 +75,7 @@ const PricingPage = () => {
       description: 'For power users who need more',
       price: { monthly: 19, yearly: 190 },
       features: [
-        '20 Llama guides per day',
+  '20 Kimi (Base) guides per day',
         '15 Gemini guides per day',
         '15 DeepSeek guides per day',
         '10 O3 Mini guides per day',

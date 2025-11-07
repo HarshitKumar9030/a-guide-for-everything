@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { deepseekCompletion } from '@/lib/ai/deepseek';
+import { checkModelAccess } from '@/lib/user-plan';
+import { checkAndIncrementUsage, recordUsage } from '@/lib/usage';
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,14 +36,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Enforce plan & usage (deepseek bucket key is 'deepseek')
+    const { getUserPlan } = await import('@/lib/user-plan');
+    const planDoc = await getUserPlan(session.user.email!);
+    if (!checkModelAccess(planDoc.plan, 'deepseek')) {
+      return NextResponse.json({ error: 'Model not available on your plan' }, { status: 403 });
+    }
+    const usageCheck = await checkAndIncrementUsage(session.user.email!, 'deepseek');
+    if (!usageCheck.allowed) {
+      return NextResponse.json({ error: usageCheck.reason }, { status: 429 });
+    }
+
     const result = await deepseekCompletion(prompt);
+
+    const totalTokens = result.tokens?.total ?? 0;
+
+    await recordUsage(session.user.email!, 'deepseek', {
+      text: 1,
+      tokens: totalTokens,
+    });
 
     return NextResponse.json({
       response: result.content,
       model: result.model,
       timestamp: result.timestamp,
       tokens: result.tokens,
-      user: session.user.email 
+      user: session.user.email,
+      remaining: usageCheck.remaining,
+      plan: planDoc.plan,
     });
 
   } catch (error) {
